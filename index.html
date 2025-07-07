@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Blue Archive Mod Loader</title>
+</head>
+<body>
+    <p>點擊按鈕來選擇一個 .bundle 檔案。</p>
+    
+    <button id="select-file-btn">選擇檔案</button>
+    <p>已選擇的檔案：<strong id="file-path">尚未選擇</strong></p>
+
+    <script>
+        const selectBtn = document.getElementById('select-file-btn'); 
+        const filePathElement = document.getElementById('file-path'); 
+
+        selectBtn.addEventListener('click', async () => { 
+            
+            const filePath = await window.api.openFile(); 
+            if (filePath) { 
+                filePathElement.innerText = filePath; 
+            } else { 
+                filePathElement.innerText = '使用者取消選擇'; 
+            } 
+        }); 
+    </script>
+</body>
+</html>

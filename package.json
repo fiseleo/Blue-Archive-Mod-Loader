@@ -1,0 +1,24 @@
+{
+  "name": "blue-archive-mod-loader",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start" : "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fiseleo/Blue-Archive-Mod-Loader.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/fiseleo/Blue-Archive-Mod-Loader/issues"
+  },
+  "homepage": "https://github.com/fiseleo/Blue-Archive-Mod-Loader#readme",
+  "description": "",
+  "devDependencies": {
+    "electron": "^37.2.0"
+  }
+}
