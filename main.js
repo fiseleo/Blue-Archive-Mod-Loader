@@ -173,7 +173,7 @@ app.whenReady().then(async () => {
 	ipcMain.handle('dialog:openFile', async () => {
 		const { canceled, filePaths } = await dialog.showOpenDialog({
 			title: i18next.t('select_file_button'),
-			properties: ['openFile', 'multiSelections'], // 允許選擇多個檔案
+			properties: ['openFile', 'multiSelections'],
 			filters: [{ name: 'Bundle Files', extensions: ['bundle'] }]
 		});
 
@@ -182,29 +182,41 @@ app.whenReady().then(async () => {
 		}
 
 		const currentMods = store.get('mods', []);
+		const errors = [];
 
 		for (const filePath of filePaths) {
 			const fileName = path.basename(filePath);
 			const newPath = path.join(modBundleDir, fileName);
 
-
 			if (currentMods.some(mod => mod.fileName === fileName)) {
 				continue;
 			}
 
-			fs.copyFileSync(filePath, newPath);
+			if (!fs.existsSync(filePath)) {
+				errors.push(`${fileName}: ${i18next.t('file_not_found')}`);
+				continue;
+			}
 
-			currentMods.push({
-				id: crypto.randomUUID(), // 產生一個唯一的 ID
-				fileName: fileName,
-				modName: fileName.replace(/\.bundle$/i, ''), // 預設 Mod 名稱為檔名 (去掉副檔名)
-				enabled: true, // 預設為啟用
-				path: newPath,
-			});
+			try {
+				fs.copyFileSync(filePath, newPath);
+				currentMods.push({
+					id: crypto.randomUUID(),
+					fileName: fileName,
+					modName: fileName.replace(/\.bundle$/i, ''),
+					enabled: true,
+					path: newPath,
+				});
+			} catch (err) {
+				errors.push(`${fileName}: ${err.message}`);
+			}
 		}
 
-		store.set('mods', currentMods); // 儲存更新後的列表
-		return currentMods; // 回傳完整的 Mod 列表
+		store.set('mods', currentMods);
+		// 若有錯誤，回傳錯誤訊息與成功的 mod 列表
+		if (errors.length > 0) {
+			return { mods: currentMods, errors };
+		}
+		return currentMods;
 	});
 
 	ipcMain.handle('mods:get', () => {
