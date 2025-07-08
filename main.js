@@ -15,15 +15,6 @@ if (!fs.existsSync(modBundleDir)) {
 	fs.mkdirSync(modBundleDir, { recursive: true });
 }
 
-i18next.use(Backend).init({
-	lng: app.getLocale(),
-	fallbackLng: 'en',
-	backend: {
-		loadPath: path.join(__dirname, 'locales/{{lng}}/{{ns}}.json'),
-	},
-	ns: ['translation'],
-	defaultNS: 'translation',
-});
 
 async function getDriveLetters() {
 	try {
@@ -146,6 +137,24 @@ function createWindow() {
 };
 
 app.whenReady().then(() => {
+	// 初始化 i18next
+	i18next.use(Backend).init({
+		lng: app.getLocale(), // 使用應用程式的語言設定
+		fallbackLng: 'en',
+		backend: {
+			loadPath: path.join(__dirname, 'locales/{{lng}}/{{ns}}.json'),
+		},
+		ns: ['translation'],
+		defaultNS: 'translation',
+	});
+
+	ipcMain.handle('game:launch', async () => {
+		// Steam 的 Blue Archive appid: 3557620
+		const steamUrl = 'steam://run/3557620';
+		const { shell } = require('electron');
+		await shell.openExternal(steamUrl);
+		return true;
+	});
 	ipcMain.handle('dialog:openFile', async () => {
 		const { canceled, filePaths } = await dialog.showOpenDialog({
 			title: i18next.t('select_file_button'),

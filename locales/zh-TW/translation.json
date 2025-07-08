@@ -5,7 +5,6 @@
   "selected_file_label": "已選擇的檔案：",
   "not_selected": "尚未選擇",
   "user_cancelled": "使用者取消選擇",
-
   "set_game_path_button": "手動設定遊戲路徑",
   "game_path_not_set": "尚未設定 BlueArchive.exe 路徑。",
   "select_game_executable": "請選擇 BlueArchive.exe",
@@ -38,6 +37,8 @@
   "action_status_uninstalling": "正在解除安裝 Mod，請稍候...",
   "button_cancel": "取消",
   "button_apply": "應用",
-  "button_uninstall": "解除安裝"
+  "button_uninstall": "解除安裝",
+  "launch_game_button": "啟動Blue Archive",
+  "action_status_launching": "正在嘗試透過 Steam 啟動遊戲..."
   
 }

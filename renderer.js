@@ -51,21 +51,26 @@ function setupEventListeners() {
     const statusMessageElement = document.getElementById('status-message');
     const applyBtn = document.getElementById('apply-mods-btn');
     const uninstallBtn = document.getElementById('uninstall-mods-btn');
+    const launchGameBtn = document.getElementById('launch-game-btn');
     const actionStatusElement = document.getElementById('action-status');
 
     applyBtn.addEventListener('click', async () => {
         actionStatusElement.innerText = i18next.t('action_status_applying');
         const result = await window.api.applyMods();
         actionStatusElement.innerText = result.message;
-
         setTimeout(() => { actionStatusElement.innerText = ''; }, 5000);
     });
-
 
     uninstallBtn.addEventListener('click', async () => {
         actionStatusElement.innerText = i18next.t('action_status_uninstalling');
         const result = await window.api.uninstallMods();
         actionStatusElement.innerText = result.message;
+        setTimeout(() => { actionStatusElement.innerText = ''; }, 5000);
+    });
+
+    launchGameBtn.addEventListener('click', async () => {
+        actionStatusElement.innerText = i18next.t('action_status_launching');
+        await window.api.launchGame();
         setTimeout(() => { actionStatusElement.innerText = ''; }, 5000);
     });
 

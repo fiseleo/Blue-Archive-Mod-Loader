@@ -37,5 +37,7 @@
   "action_status_uninstalling": "Uninstalling mods, please wait...",
   "button_cancel": "Cancel",
   "button_apply": "Apply",
-  "button_uninstall": "Uninstall"
+  "button_uninstall": "Uninstall",
+  "launch_game_button": "Launch Game",
+  "action_status_launching": "Attempting to launch the game via Steam..."
 }
