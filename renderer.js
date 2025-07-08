@@ -49,20 +49,24 @@ function setupEventListeners() {
     const selectModBtn = document.getElementById('select-file-btn');
     const setGamePathBtn = document.getElementById('set-game-path-btn');
     const statusMessageElement = document.getElementById('status-message');
+    const applyBtn = document.getElementById('apply-mods-btn');
+    const uninstallBtn = document.getElementById('uninstall-mods-btn');
+    const actionStatusElement = document.getElementById('action-status');
 
-    // 選擇 Mod 檔案的按鈕
-    selectModBtn.addEventListener('click', async () => {
-        const updatedMods = await window.api.selectModFiles();
-        if (updatedMods) {
-            renderModTable(updatedMods);
-        }
+    applyBtn.addEventListener('click', async () => {
+        actionStatusElement.innerText = i18next.t('action_status_applying');
+        const result = await window.api.applyMods();
+        actionStatusElement.innerText = result.message;
+
+        setTimeout(() => { actionStatusElement.innerText = ''; }, 5000);
     });
 
-    // 設定遊戲路徑的按鈕
-    setGamePathBtn.addEventListener('click', async () => {
-        statusMessageElement.innerText = '';
-        const newPaths = await window.api.selectGamePath();
-        updateGamePathDisplay(newPaths);
+
+    uninstallBtn.addEventListener('click', async () => {
+        actionStatusElement.innerText = i18next.t('action_status_uninstalling');
+        const result = await window.api.uninstallMods();
+        actionStatusElement.innerText = result.message;
+        setTimeout(() => { actionStatusElement.innerText = ''; }, 5000);
     });
 
     window.api.onUpdateGamePath((paths) => {

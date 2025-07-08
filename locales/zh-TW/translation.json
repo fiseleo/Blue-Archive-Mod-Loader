@@ -23,5 +23,21 @@
   "mod_table_header_modname": "Mod 名稱",
   "mod_table_header_actions": "操作",
   "no_mods_installed": "尚未安裝任何 Mod，點擊「選擇 Mod 檔案」來新增。",
-  "delete_mod": "刪除 Mod"
+  "delete_mod": "刪除 Mod",
+  "apply_mods_button": "應用 Mod",
+  "uninstall_mods_button": "解除安裝 Mod",
+  "apply_mods_confirm_title": "確認應用 Mod",
+  "apply_mods_confirm_message": "這將會修改遊戲檔案。確定要應用所有「已勾選」的 Mod 嗎？",
+  "uninstall_mods_confirm_title": "確認解除安裝 Mod",
+  "uninstall_mods_confirm_message": "這將會還原原始檔案。確定要解除安裝所有「未勾選」的 Mod 嗎？",
+  "operation_cancelled": "操作已取消。",
+  "operation_success": "操作成功完成！",
+  "operation_failed": "操作失敗，請查看主控台詳細資訊。",
+  "game_path_not_configured": "尚未設定遊戲路徑，無法執行操作。",
+  "action_status_applying": "正在應用 Mod，請稍候...",
+  "action_status_uninstalling": "正在解除安裝 Mod，請稍候...",
+  "button_cancel": "取消",
+  "button_apply": "應用",
+  "button_uninstall": "解除安裝"
+  
 }

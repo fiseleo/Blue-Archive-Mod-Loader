@@ -15,17 +15,15 @@ if (!fs.existsSync(modBundleDir)) {
 	fs.mkdirSync(modBundleDir, { recursive: true });
 }
 
-i18next
-	.use(Backend)
-	.init({
-		lng: app.getLocale(),
-		fallbackLng: 'en',
-		backend: {
-			loadPath: path.join(__dirname, 'locales/{{lng}}/{{ns}}.json'),
-		},
-		ns: ['translation'],
-		defaultNS: 'translation',
-	});
+i18next.use(Backend).init({
+	lng: app.getLocale(),
+	fallbackLng: 'en',
+	backend: {
+		loadPath: path.join(__dirname, 'locales/{{lng}}/{{ns}}.json'),
+	},
+	ns: ['translation'],
+	defaultNS: 'translation',
+});
 
 async function getDriveLetters() {
 	try {
@@ -227,6 +225,102 @@ app.whenReady().then(() => {
 		};
 	});
 	ipcMain.handle('i18n:getLocale', () => app.getLocale());
+	ipcMain.handle('mods:apply', async (event) => {
+		const win = BrowserWindow.fromWebContents(event.sender);
+		const gameBundlePath = store.get('gameBundlePath');
+
+		if (!gameBundlePath || !fs.existsSync(gameBundlePath)) {
+			return { success: false, message: i18next.t('game_path_not_configured') };
+		}
+
+		const res = await dialog.showMessageBox(win, {
+			type: 'warning',
+			buttons: [i18next.t('button_cancel'), i18next.t('button_apply')],
+			defaultId: 0,
+			title: i18next.t('apply_mods_confirm_title'),
+			message: i18next.t('apply_mods_confirm_message'),
+			cancelId: 0,
+		});
+
+		if (res.response === 0) { // 使用者點擊了 Cancel
+			return { success: false, message: i18next.t('operation_cancelled') };
+		}
+
+		const modsToApply = store.get('mods', []).filter(m => m.enabled);
+		let operationsLog = [];
+
+		for (const mod of modsToApply) {
+			const targetPath = path.join(gameBundlePath, mod.fileName);
+			const backupPath = `${targetPath}.bak`;
+
+			try {
+				// 1. 備份原始檔案 (如果存在且尚未備份)
+				if (fs.existsSync(targetPath) && !fs.existsSync(backupPath)) {
+					fs.renameSync(targetPath, backupPath);
+					operationsLog.push(`Backed up: ${mod.fileName}`);
+				}
+				// 2. 複製 Mod 檔案
+				fs.copyFileSync(mod.path, targetPath);
+				operationsLog.push(`Applied: ${mod.fileName}`);
+			} catch (err) {
+				console.error(`Failed to apply mod ${mod.fileName}:`, err);
+				operationsLog.push(`Error applying ${mod.fileName}: ${err.message}`);
+				return { success: false, message: i18next.t('operation_failed'), log: operationsLog };
+			}
+		}
+		console.log(operationsLog);
+		return { success: true, message: i18next.t('operation_success'), log: operationsLog };
+	});
+
+
+	ipcMain.handle('mods:uninstall', async (event) => {
+		const win = BrowserWindow.fromWebContents(event.sender);
+		const gameBundlePath = store.get('gameBundlePath');
+
+		if (!gameBundlePath || !fs.existsSync(gameBundlePath)) {
+			return { success: false, message: i18next.t('game_path_not_configured') };
+		}
+
+		const res = await dialog.showMessageBox(win, {
+			type: 'warning',
+			buttons: [i18next.t('button_cancel'), i18next.t('button_apply')],
+			defaultId: 0,
+			title: i18next.t('uninstall_mods_confirm_title'),
+			message: i18next.t('uninstall_mods_confirm_message'),
+			cancelId: 0,
+		});
+
+		if (res.response === 0) {
+			return { success: false, message: i18next.t('operation_cancelled') };
+		}
+
+		const modsToUninstall = store.get('mods', []).filter(m => !m.enabled);
+		let operationsLog = [];
+
+		for (const mod of modsToUninstall) {
+			const targetPath = path.join(gameBundlePath, mod.fileName);
+			const backupPath = `${targetPath}.bak`;
+
+			try {
+				// 1. 刪除已應 ThemeData 的 Mod 檔案
+				if (fs.existsSync(targetPath)) {
+					fs.unlinkSync(targetPath);
+					operationsLog.push(`Removed mod file: ${mod.fileName}`);
+				}
+				// 2. 還原備份
+				if (fs.existsSync(backupPath)) {
+					fs.renameSync(backupPath, targetPath);
+					operationsLog.push(`Restored original: ${mod.fileName}`);
+				}
+			} catch (err) {
+				console.error(`Failed to uninstall mod ${mod.fileName}:`, err);
+				operationsLog.push(`Error uninstalling ${mod.fileName}: ${err.message}`);
+				return { success: false, message: i18next.t('operation_failed'), log: operationsLog };
+			}
+		}
+		console.log(operationsLog);
+		return { success: true, message: i18next.t('operation_success'), log: operationsLog };
+	});
 	createWindow();
 	app.on('activate', () => {
 		if (BrowserWindow.getAllWindows().length === 0) {

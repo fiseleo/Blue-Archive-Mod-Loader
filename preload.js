@@ -8,12 +8,15 @@ contextBridge.exposeInMainWorld('api', {
   onUpdateStatus: (callback) => ipcRenderer.on('update-status', (_event, value) => callback(value)),
 
   // Mod 檔案相關
-  selectModFiles: () => ipcRenderer.invoke('dialog:openFile'), // 重新命名以更符合功能
+  selectModFiles: () => ipcRenderer.invoke('dialog:openFile'),
   getMods: () => ipcRenderer.invoke('mods:get'),
   updateMod: (mod) => ipcRenderer.invoke('mods:update', mod),
   deleteMod: (modId) => ipcRenderer.invoke('mods:delete', modId),
-});
 
+  
+  applyMods: () => ipcRenderer.invoke('mods:apply'),
+  uninstallMods: () => ipcRenderer.invoke('mods:uninstall'),
+});
 contextBridge.exposeInMainWorld('config', {
   getGamePath: () => ipcRenderer.invoke('config:getGamePath')
 });

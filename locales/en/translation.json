@@ -22,5 +22,20 @@
   "mod_table_header_modname": "Mod Name",
   "mod_table_header_actions": "Actions",
   "no_mods_installed": "No mods installed yet. Click 'Select Mod File' to add one.",
-  "delete_mod": "Delete Mod"
+  "delete_mod": "Delete Mod",
+  "apply_mods_button": "Apply Mods",
+  "uninstall_mods_button": "Uninstall Mods",
+  "apply_mods_confirm_title": "Apply Mods Confirmation",
+  "apply_mods_confirm_message": "This will modify game files. Are you sure you want to apply all CHECKED mods?",
+  "uninstall_mods_confirm_title": "Uninstall Mods Confirmation",
+  "uninstall_mods_confirm_message": "This will restore original files. Are you sure you want to uninstall all UNCHECKED mods?",
+  "operation_cancelled": "Operation cancelled.",
+  "operation_success": "Operation completed successfully!",
+  "operation_failed": "Operation failed. Check the console for details.",
+  "game_path_not_configured": "Game path is not configured. Cannot proceed.",
+  "action_status_applying": "Applying mods, please wait...",
+  "action_status_uninstalling": "Uninstalling mods, please wait...",
+  "button_cancel": "Cancel",
+  "button_apply": "Apply",
+  "button_uninstall": "Uninstall"
 }
