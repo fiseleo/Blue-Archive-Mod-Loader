@@ -10,7 +10,9 @@ const crypto = require('crypto');
 const store = new Store();
 
 
-const modBundleDir = path.join(app.getAppPath(), 'ModBundle');
+
+// 將 ModBundle 目錄設在 userData（可寫入）資料夾下
+const modBundleDir = path.join(app.getPath('userData'), 'ModBundle');
 if (!fs.existsSync(modBundleDir)) {
 	fs.mkdirSync(modBundleDir, { recursive: true });
 }
@@ -183,6 +185,15 @@ app.whenReady().then(async () => {
 
 		const currentMods = store.get('mods', []);
 		const errors = [];
+
+		// 確保 ModBundle 目錄存在（防止打包後第一次啟動未建立）
+		if (!fs.existsSync(modBundleDir)) {
+			try {
+				fs.mkdirSync(modBundleDir, { recursive: true });
+			} catch (err) {
+				return { mods: currentMods, errors: [i18next.t('modbundle_create_failed') + ': ' + err.message] };
+			}
+		}
 
 		for (const filePath of filePaths) {
 			const fileName = path.basename(filePath);
