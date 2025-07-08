@@ -5,7 +5,7 @@
   "selected_file_label": "已選擇的檔案：",
   "not_selected": "尚未選擇",
   "user_cancelled": "使用者取消選擇",
-  "game_path_label": "遊戲路徑",
+
   "set_game_path_button": "手動設定遊戲路徑",
   "game_path_not_set": "尚未設定 BlueArchive.exe 路徑。",
   "select_game_executable": "請選擇 BlueArchive.exe",
@@ -14,5 +14,14 @@
   "status_drives_found": "偵測到磁碟機：{{drives}}，即將開始掃描。",
   "status_scanning_drive": "正在掃描磁碟機 {{drive}} 以尋找 BlueArchive.exe，這可能需要一些時間...",
   "status_found": "已自動找到遊戲：{{path}}",
-  "status_not_found": "自動搜尋失敗，請手動選擇遊戲路徑。"
+  "status_not_found": "自動搜尋失敗，請手動選擇遊戲路徑。",
+  "game_path_label": "遊戲執行檔路徑 (.exe)",
+  "game_bundle_path_label": "遊戲資源包路徑",
+  "path_not_generated": "無法產生路徑。",
+  "mod_table_header_enabled": "啟用",
+  "mod_table_header_filename": "檔名",
+  "mod_table_header_modname": "Mod 名稱",
+  "mod_table_header_actions": "操作",
+  "no_mods_installed": "尚未安裝任何 Mod，點擊「選擇 Mod 檔案」來新增。",
+  "delete_mod": "刪除 Mod"
 }

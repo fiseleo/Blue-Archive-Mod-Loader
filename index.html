@@ -7,11 +7,19 @@
         body { font-family: sans-serif; padding: 20px; color: #333; }
         strong { word-break: break-all; }
         #status-message { color: #888; font-style: italic; min-height: 1.2em; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .mod-name-input { width: 95%; border: 1px solid #ddd; padding: 4px; }
+        .delete-btn { color: red; cursor: pointer; }
     </style>
 </head>
 <body>
     <h2 data-i18n="game_path_label"></h2>
     <p><strong id="game-path"></strong></p>
+    <h2 data-i18n="game_bundle_path_label"></h2>
+    <p><strong id="game-bundle-path"></strong></p>
+
     <p id="status-message"></p> 
     <button id="set-game-path-btn" data-i18n="set_game_path_button"></button>
 
@@ -19,7 +27,19 @@
 
     <h2 data-i18n="mod_file_label"></h2>
     <button id="select-file-btn" data-i18n="select_file_button"></button>
-    <p><span data-i18n="selected_file_label"></span> <strong id="file-path" data-i18n="not_selected"></strong></p>
+    
+    <table id="mod-table">
+        <thead>
+            <tr>
+                <th data-i18n="mod_table_header_enabled"></th>
+                <th data-i18n="mod_table_header_filename"></th>
+                <th data-i18n="mod_table_header_modname"></th>
+                <th data-i18n="mod_table_header_actions"></th>
+            </tr>
+        </thead>
+        <tbody id="mod-table-body">
+            </tbody>
+    </table>
 
     <script src="./node_modules/i18next/dist/umd/i18next.min.js"></script>
     <script src="./renderer.js"></script>

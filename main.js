@@ -5,11 +5,16 @@ const Store = require('electron-store').default;
 const i18next = require('i18next');
 const Backend = require('i18next-fs-backend');
 const fg = require('fast-glob');
-
+const drivelist = require('drivelist');
+const crypto = require('crypto');
 const store = new Store();
 
-//i18next 初始化
-// 使用 i18next-fs-backend 來載入本地化文件
+
+const modBundleDir = path.join(app.getAppPath(), 'ModBundle');
+if (!fs.existsSync(modBundleDir)) {
+	fs.mkdirSync(modBundleDir, { recursive: true });
+}
+
 i18next
 	.use(Backend)
 	.init({
@@ -20,94 +25,91 @@ i18next
 		},
 		ns: ['translation'],
 		defaultNS: 'translation',
-	})
-
-
-function getDriveLetters() {
-  try {
-    // 使用 Windows 的 wmic 指令來取得磁碟機列表
-    const stdout = execSync('wmic logicaldisk get name', { encoding: 'utf8' });
-    const drives = stdout.split('\n')
-      .map(line => line.trim())
-      .filter(line => /^[A-Z]:$/.test(line)) // 只保留像 "C:" 這樣的格式
-      .map(drive => `${drive}/`); // 加上斜線，方便後續使用
-    return drives;
-  } catch (error) {
-    console.error('Failed to get drive letters:', error);
-    // 如果失敗，回傳一個預設的列表
-    return ['C:/', 'D:/', 'E:/'];
-  }
-}
-
-async function findGameExecutable(win) {
-  win.webContents.send('update-status', i18next.t('status_preparing_search'));
-
-  const searchPaths = getDriveLetters(); // 動態取得所有磁碟機
-  win.webContents.send('update-status', i18next.t('status_drives_found', { drives: searchPaths.join(', ') }));
-  
-  await new Promise(resolve => setTimeout(resolve, 1000)); // 暫停一下讓使用者看到訊息
-
-  for (const searchPath of searchPaths) {
-    try {
-      win.webContents.send('update-status', i18next.t('status_scanning_drive', { drive: searchPath }));
-      
-      const entries = await fg('**/BlueArchive.exe', {
-        cwd: searchPath,
-        deep: 7, // 增加搜尋深度，但仍設有上限以防無窮迴圈
-        onlyFiles: true,
-        caseSensitiveMatch: false,
-        suppressErrors: true, // 忽略權限不足等讀取錯誤
-        ignore: [
-          '**/$RECYCLE.BIN/**',
-          '**/System Volume Information/**',
-          '**/Windows/**',
-          '**/ProgramData/**',
-          '**/$WinREAgent/**',
-          '**/Recovery/**'
-        ],
-      });
-      
-      if (entries.length > 0) {
-        const foundPath = path.join(searchPath, entries[0]);
-        win.webContents.send('update-status', i18next.t('status_found', { path: foundPath }));
-        return foundPath;
-      }
-    } catch (err) {
-      // 雖然 suppressErrors 已經設為 true，但仍保留以防萬一
-      console.error(`Error searching in ${searchPath}:`, err);
-    }
-  }
-
-  win.webContents.send('update-status', i18next.t('status_not_found'));
-  return null;
-}
-
-
-
-async function selectGamePath(win) {
-	const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-		title: i18next.t('select_game_executable'), // 從 i18n 取得標題
-		properties: ['openFile'],
-		filters: [
-			{ name: 'BlueArchive Executable', extensions: ['exe'] }
-		]
 	});
-	if (!canceled) {
-		const gamePath = filePaths[0];
-		store.set('gamePath', gamePath); // 將路徑存到設定檔
-		return gamePath; // 返回新路徑
+
+async function getDriveLetters() {
+	try {
+		const drives = await drivelist.list();
+
+		console.log('--- Drivelist Raw Output ---');
+		console.log(drives);
+
+
+
+		const drivePaths = drives
+			.filter(drive => drive.mountpoints && drive.mountpoints.length > 0)
+			.flatMap(drive => drive.mountpoints.map(mp => `${mp.path.replace(/\\/g, '/')}/`));
+
+
+		console.log('--- Filtered Drive Paths for Scanning ---');
+		console.log(drivePaths);
+
+		return drivePaths;
+
+	} catch (error) {
+		console.error('Failed to get drive letters with drivelist:', error);
+		return ['C:/', 'D:/', 'E:/'];
 	}
 }
 
-async function handleFileOpen() {
-	const { canceled, filePaths } = await dialog.showOpenDialog({
+async function findGameExecutable(win) {
+	win.webContents.send('update-status', i18next.t('status_preparing_search'));
+	const searchPaths = await getDriveLetters();
+	win.webContents.send('update-status', i18next.t('status_drives_found', { drives: searchPaths.join(', ') }));
+
+	await new Promise(resolve => setTimeout(resolve, 1000));
+
+	for (const searchPath of searchPaths) {
+		try {
+			win.webContents.send('update-status', i18next.t('status_scanning_drive', { drive: searchPath }));
+
+			const entries = await fg('**/BlueArchive.exe', {
+				cwd: searchPath,
+				deep: 7, // 增加搜尋深度，但仍設有上限以防無窮迴圈
+				onlyFiles: true,
+				caseSensitiveMatch: false,
+				suppressErrors: true, // 忽略權限不足等讀取錯誤
+				ignore: [
+					'**/$RECYCLE.BIN/**',
+					'**/System Volume Information/**',
+					'**/Windows/**',
+					'**/ProgramData/**',
+					'**/$WinREAgent/**',
+					'**/Recovery/**'
+				],
+			});
+
+			if (entries.length > 0) {
+				const foundPath = path.join(searchPath, entries[0]);
+				saveGamePaths(foundPath);
+				win.webContents.send('update-status', i18next.t('status_found', { path: foundPath }));
+				return { gamePath: store.get('gamePath'), gameBundlePath: store.get('gameBundlePath') };
+			}
+		} catch (err) {
+			console.error(`Error searching in ${searchPath}:`, err);
+		}
+	}
+
+	win.webContents.send('update-status', i18next.t('status_not_found'));
+	return null;
+}
+
+// saveGamePaths, selectGamePath, createWindow 和 app 事件處理等其餘程式碼保持不變
+function saveGamePaths(executablePath) {
+	const gameDirectory = path.dirname(executablePath);
+	const bundlePath = path.join(gameDirectory, 'BlueArchive_Data', 'StreamingAssets', 'PUB', 'Resource', 'GameData', 'Windows');
+	store.set({ gamePath: executablePath, gameBundlePath: bundlePath });
+	return { gamePath: executablePath, gameBundlePath: bundlePath };
+}
+
+async function selectGamePath(win) {
+	const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+		title: i18next.t('select_game_executable'),
 		properties: ['openFile'],
-		filters: [
-			{ name: 'Bundle Files', extensions: ['bundle'] },
-		]
+		filters: [{ name: 'BlueArchive Executable', extensions: ['exe'] }]
 	});
 	if (!canceled) {
-		return filePaths[0]; // 返回選擇的文件路徑
+		return saveGamePaths(filePaths[0]);
 	}
 }
 
@@ -123,55 +125,109 @@ function createWindow() {
 	win.loadFile('index.html');
 	win.setMenu(null);
 
-	// 應用程式啟動後的完整檢查流程
 	win.webContents.on('did-finish-load', async () => {
 		let gamePath = store.get('gamePath');
+		let gameBundlePath = store.get('gameBundlePath');
 
-		// 1. 檢查儲存的路徑是否仍然有效
 		if (gamePath && fs.existsSync(gamePath)) {
-			win.webContents.send('update-game-path', gamePath);
-			return; // 路徑有效，流程結束
+			win.webContents.send('update-game-path', { gamePath, gameBundlePath });
+			return;
 		}
 
-		// 2. 如果路徑無效或不存在，開始自動搜尋
-		gamePath = await findGameExecutable(win);
+		const paths = await findGameExecutable(win);
 
-		if (gamePath) {
-			// 3. 自動搜尋成功
-			store.set('gamePath', gamePath);
-			win.webContents.send('update-game-path', gamePath);
+		if (paths) {
+			win.webContents.send('update-game-path', paths);
 		} else {
-			// 4. 自動搜尋失敗，彈出視窗讓使用者手動選擇
-			const manualPath = await selectGamePath(win);
-			if (manualPath) {
-				win.webContents.send('update-game-path', manualPath);
+			const manualPaths = await selectGamePath(win);
+			if (manualPaths) {
+				win.webContents.send('update-game-path', manualPaths);
 			}
 		}
 	});
 };
 
-
-
 app.whenReady().then(() => {
+	ipcMain.handle('dialog:openFile', async () => {
+		const { canceled, filePaths } = await dialog.showOpenDialog({
+			title: i18next.t('select_file_button'),
+			properties: ['openFile', 'multiSelections'], // 允許選擇多個檔案
+			filters: [{ name: 'Bundle Files', extensions: ['bundle'] }]
+		});
 
-	ipcMain.handle('dialog:openFile', handleFileOpen);
+		if (canceled || filePaths.length === 0) {
+			return null;
+		}
 
+		const currentMods = store.get('mods', []);
+
+		for (const filePath of filePaths) {
+			const fileName = path.basename(filePath);
+			const newPath = path.join(modBundleDir, fileName);
+
+
+			if (currentMods.some(mod => mod.fileName === fileName)) {
+				continue;
+			}
+
+			fs.copyFileSync(filePath, newPath);
+
+			currentMods.push({
+				id: crypto.randomUUID(), // 產生一個唯一的 ID
+				fileName: fileName,
+				modName: fileName.replace(/\.bundle$/i, ''), // 預設 Mod 名稱為檔名 (去掉副檔名)
+				enabled: true, // 預設為啟用
+				path: newPath,
+			});
+		}
+
+		store.set('mods', currentMods); // 儲存更新後的列表
+		return currentMods; // 回傳完整的 Mod 列表
+	});
+
+	ipcMain.handle('mods:get', () => {
+		return store.get('mods', []);
+	});
+
+	ipcMain.handle('mods:update', (_event, updatedMod) => {
+		let mods = store.get('mods', []);
+		const modIndex = mods.findIndex(mod => mod.id === updatedMod.id);
+		if (modIndex !== -1) {
+			mods[modIndex] = { ...mods[modIndex], ...updatedMod };
+			store.set('mods', mods);
+		}
+		return mods;
+	});
+
+	ipcMain.handle('mods:delete', (_event, modId) => {
+		let mods = store.get('mods', []);
+		const modToDelete = mods.find(mod => mod.id === modId);
+		if (modToDelete) {
+			try {
+				if (fs.existsSync(modToDelete.path)) {
+					fs.unlinkSync(modToDelete.path); // 從硬碟刪除檔案
+				}
+			} catch (err) {
+				console.error(`Failed to delete mod file: ${modToDelete.path}`, err);
+			}
+		}
+		const newMods = mods.filter(mod => mod.id !== modId);
+		store.set('mods', newMods);
+		return newMods;
+	});
 
 	ipcMain.handle('dialog:selectGamePath', (event) => {
-
 		const win = BrowserWindow.fromWebContents(event.sender);
 		return selectGamePath(win);
 	});
-
-
 	ipcMain.handle('config:getGamePath', () => {
-		return store.get('gamePath');
+		return {
+			gamePath: store.get('gamePath'),
+			gameBundlePath: store.get('gameBundlePath'),
+		};
 	});
-
 	ipcMain.handle('i18n:getLocale', () => app.getLocale());
-
 	createWindow();
-
 	app.on('activate', () => {
 		if (BrowserWindow.getAllWindows().length === 0) {
 			createWindow();

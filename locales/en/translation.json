@@ -5,7 +5,6 @@
   "selected_file_label": "Selected File:",
   "not_selected": "Not yet selected",
   "user_cancelled": "User cancelled selection",
-  "game_path_label": "Game Path",
   "set_game_path_button": "Set Game Path Manually",
   "game_path_not_set": "BlueArchive.exe path is not set.",
   "select_game_executable": "Please select BlueArchive.exe",
@@ -14,5 +13,14 @@
   "status_drives_found": "Detected drives: {{drives}}. Starting scan.",
   "status_scanning_drive": "Scanning drive {{drive}} for BlueArchive.exe, this may take a while...",
   "status_found": "Game found automatically: {{path}}",
-  "status_not_found": "Could not find the game automatically. Please select the path manually."
+  "status_not_found": "Could not find the game automatically. Please select the path manually.",
+  "game_path_label": "Game Executable Path (.exe)",
+  "game_bundle_path_label": "Game Bundle Path",
+  "path_not_generated": "Path could not be generated.",
+  "mod_table_header_enabled": "Enabled",
+  "mod_table_header_filename": "File Name",
+  "mod_table_header_modname": "Mod Name",
+  "mod_table_header_actions": "Actions",
+  "no_mods_installed": "No mods installed yet. Click 'Select Mod File' to add one.",
+  "delete_mod": "Delete Mod"
 }

@@ -22,6 +22,7 @@
     "electron": "^37.2.0"
   },
   "dependencies": {
+    "drivelist": "^12.0.2",
     "electron-store": "^10.1.0",
     "fast-glob": "^3.3.3",
     "i18next": "^25.3.1",

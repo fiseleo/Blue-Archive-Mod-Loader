@@ -1,67 +1,73 @@
 // renderer.js
 
-// 渲染器端的 i18next 初始化
+// 函式：初始化 i18next
 async function initializeI18n() {
-  const userLocale = await window.i18n.getLocale();
-  await i18next.init({
-    lng: userLocale,
-    fallbackLng: 'en',
-    resources: {
-      en: { translation: await fetch('./locales/en/translation.json').then(res => res.json()) },
-      'zh-TW': { translation: await fetch('./locales/zh-TW/translation.json').then(res => res.json()) }
-    }
-  });
-  updateContent();
+    const userLocale = await window.i18n.getLocale();
+
+    await i18next.init({
+        lng: userLocale, // 從主行程取得當前語言
+        fallbackLng: 'en', // 備用語言
+        resources: {
+            en: {
+                translation: await fetch('./locales/en/translation.json').then(res => res.json())
+            },
+            // 這裡你可以根據你的語言檔決定要載入哪一個
+            'zh-TW': {
+                translation: await fetch('./locales/zh-TW/translation.json').then(res => res.json())
+            }
+        }
+    });
+    updateContent();
 }
 
-// 更新頁面上所有帶有 data-i18n 屬性的文字
+// 函式：更新頁面所有標記的文字
 function updateContent() {
-  document.title = i18next.t('title');
-  const elements = document.querySelectorAll('[data-i18n]');
-  elements.forEach(el => {
-    const key = el.getAttribute('data-i18n');
-    el.innerHTML = i18next.t(key);
-  });
+    document.title = i18next.t('title');
+    const elements = document.querySelectorAll('[data-i18n]');
+    elements.forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        el.innerHTML = i18next.t(key);
+    });
 }
 
-// 更新遊戲路徑的顯示
-function updateGamePathDisplay(path) {
+// 函式：更新遊戲路徑的顯示
+function updateGamePathDisplay(paths) {
     const gamePathElement = document.getElementById('game-path');
-    if (path) {
-        gamePathElement.innerText = path;
+    const gameBundlePathElement = document.getElementById('game-bundle-path');
+
+    if (paths && paths.gamePath) {
+        gamePathElement.innerText = paths.gamePath;
+        gameBundlePathElement.innerText = paths.gameBundlePath || i18next.t('path_not_generated');
     } else {
         gamePathElement.innerText = i18next.t('game_path_not_set');
+        gameBundlePathElement.innerText = '---';
     }
 }
 
-// 綁定所有事件監聽器
+
 function setupEventListeners() {
-    const selectBundleBtn = document.getElementById('select-file-btn');
-    const bundlePathElement = document.getElementById('file-path');
+    const selectModBtn = document.getElementById('select-file-btn');
     const setGamePathBtn = document.getElementById('set-game-path-btn');
     const statusMessageElement = document.getElementById('status-message');
 
-    // 選擇 .bundle 檔案的按鈕
-    selectBundleBtn.addEventListener('click', async () => {
-        const filePath = await window.api.openFile();
-        if (filePath) {
-            bundlePathElement.innerText = filePath;
-        } else {
-            bundlePathElement.innerText = i18next.t('user_cancelled');
+    // 選擇 Mod 檔案的按鈕
+    selectModBtn.addEventListener('click', async () => {
+        const updatedMods = await window.api.selectModFiles();
+        if (updatedMods) {
+            renderModTable(updatedMods);
         }
     });
 
     // 設定遊戲路徑的按鈕
     setGamePathBtn.addEventListener('click', async () => {
-        statusMessageElement.innerText = ''; // 按下按鈕時清空狀態訊息
-        const newPath = await window.api.selectGamePath();
-        updateGamePathDisplay(newPath);
+        statusMessageElement.innerText = '';
+        const newPaths = await window.api.selectGamePath();
+        updateGamePathDisplay(newPaths);
     });
 
-    // 監聽來自 main.js 的路徑更新通知
-    window.api.onUpdateGamePath((path) => {
-        updateGamePathDisplay(path);
-        statusMessageElement.innerText = ''; // 成功更新路徑後，清空狀態訊息
+    window.api.onUpdateGamePath((paths) => {
+        updateGamePathDisplay(paths);
+        statusMessageElement.innerText = '';
     });
 
     window.api.onUpdateStatus((message) => {
@@ -69,12 +75,71 @@ function setupEventListeners() {
     });
 }
 
-// 主執行流程
-document.addEventListener('DOMContentLoaded', async () => {
-  await initializeI18n();
-  setupEventListeners();
+function renderModTable(mods) {
+    const tableBody = document.getElementById('mod-table-body');
+    tableBody.innerHTML = ''; // 清空舊的內容
 
-  // 頁面載入後，立即從設定檔讀取並顯示遊戲路徑
-  const initialGamePath = await window.config.getGamePath();
-  updateGamePathDisplay(initialGamePath);
+    if (!mods || mods.length === 0) {
+        const row = tableBody.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = 4;
+        cell.textContent = i18next.t('no_mods_installed');
+        cell.style.textAlign = 'center';
+        return;
+    }
+
+    mods.forEach(mod => {
+        const row = tableBody.insertRow();
+
+        // Checkbox
+        const enabledCell = row.insertCell();
+        const enabledCheckbox = document.createElement('input');
+        enabledCheckbox.type = 'checkbox';
+        enabledCheckbox.checked = mod.enabled;
+        enabledCheckbox.addEventListener('change', () => {
+            window.api.updateMod({ id: mod.id, enabled: enabledCheckbox.checked });
+        });
+        enabledCell.appendChild(enabledCheckbox);
+
+        // 檔名
+        const fileNameCell = row.insertCell();
+        fileNameCell.textContent = mod.fileName;
+
+        // Mod 名稱 (可編輯)
+        const modNameCell = row.insertCell();
+        const modNameInput = document.createElement('input');
+        modNameInput.type = 'text';
+        modNameInput.value = mod.modName;
+        modNameInput.className = 'mod-name-input';
+        modNameInput.addEventListener('change', () => {
+            window.api.updateMod({ id: mod.id, modName: modNameInput.value });
+        });
+        modNameCell.appendChild(modNameInput);
+
+        // 刪除按鈕
+        const actionsCell = row.insertCell();
+        const deleteBtn = document.createElement('span');
+        deleteBtn.textContent = '🗑️';
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.title = i18next.t('delete_mod');
+        deleteBtn.addEventListener('click', async () => {
+            const updatedMods = await window.api.deleteMod(mod.id);
+            renderModTable(updatedMods); // 刪除後重新渲染表格
+        });
+        actionsCell.appendChild(deleteBtn);
+    });
+}
+
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await initializeI18n();
+    setupEventListeners();
+
+    // 載入遊戲路徑
+    const initialPaths = await window.config.getGamePath();
+    updateGamePathDisplay(initialPaths);
+
+    // ❗️ 新增：載入並渲染現有的 Mod 列表
+    const initialMods = await window.api.getMods();
+    renderModTable(initialMods);
 });
