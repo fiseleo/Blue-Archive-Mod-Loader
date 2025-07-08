@@ -1,4 +1,7 @@
 {
+  "disclaimer_title": "Disclaimer",
+  "disclaimer_message": "This program is Blue Archive Mod Manager. Mods are unofficial assets. Use at your own risk.",
+  "disclaimer_button": "I Understand",
   "title": "Blue Archive Mod Loader",
   "description": "Click the button to select a .bundle file.",
   "select_file_button": "Select Mod File",

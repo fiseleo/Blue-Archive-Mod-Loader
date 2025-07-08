@@ -1,4 +1,7 @@
 {
+  "disclaimer_title": "免責聲明",
+  "disclaimer_message": "此程式是 Blue Archive Mod Manager，模組是非官方資產，使用時不保證任何風險。",
+  "disclaimer_button": "我了解",
   "title": "Blue Archive Mod Loader",
   "description": "點擊按鈕來選擇一個 .bundle 檔案。",
   "select_file_button": "選擇 Mod 檔案",

@@ -136,7 +136,8 @@ function createWindow() {
 	});
 };
 
-app.whenReady().then(() => {
+
+app.whenReady().then(async () => {
 	// 初始化 i18next
 	i18next.use(Backend).init({
 		lng: app.getLocale(), // 使用應用程式的語言設定
@@ -146,6 +147,20 @@ app.whenReady().then(() => {
 		},
 		ns: ['translation'],
 		defaultNS: 'translation',
+	});
+
+	// 等待 i18next 初始化完成
+	await new Promise(resolve => {
+		i18next.on('initialized', resolve);
+	});
+
+	// 啟動時顯示免責聲明彈窗
+	await dialog.showMessageBox({
+		type: 'warning',
+		title: i18next.t('disclaimer_title'),
+		message: i18next.t('disclaimer_message'),
+		buttons: [i18next.t('disclaimer_button')],
+		defaultId: 0
 	});
 
 	ipcMain.handle('game:launch', async () => {
