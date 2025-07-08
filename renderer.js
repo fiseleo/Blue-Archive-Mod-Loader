@@ -60,6 +60,15 @@ function setupEventListeners() {
         actionStatusElement.innerText = result.message;
         setTimeout(() => { actionStatusElement.innerText = ''; }, 5000);
     });
+    selectModBtn.addEventListener('click', async () => {
+        const mods = await window.api.selectModFiles();
+        if (mods) renderModTable(mods);
+    });
+
+    setGamePathBtn.addEventListener('click', async () => {
+        const paths = await window.api.selectGamePath();
+        if (paths) updateGamePathDisplay(paths);
+    });
 
     uninstallBtn.addEventListener('click', async () => {
         actionStatusElement.innerText = i18next.t('action_status_uninstalling');
