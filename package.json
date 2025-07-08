@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "main.js",
   "scripts": {
-    "start" : "electron .",
+    "start": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -20,5 +20,11 @@
   "description": "",
   "devDependencies": {
     "electron": "^37.2.0"
+  },
+  "dependencies": {
+    "electron-store": "^10.1.0",
+    "fast-glob": "^3.3.3",
+    "i18next": "^25.3.1",
+    "i18next-fs-backend": "^2.6.0"
   }
 }

@@ -1,0 +1,13 @@
+{
+  "title": "Blue Archive Mod Loader",
+  "description": "Click the button to select a .bundle file.",
+  "select_file_button": "Select Mod File",
+  "selected_file_label": "Selected File:",
+  "not_selected": "Not yet selected",
+  "user_cancelled": "User cancelled selection",
+  "game_path_label": "Game Path",
+  "set_game_path_button": "Set Game Path",
+  "game_path_not_set": "BlueArchive.exe path is not set.",
+  "select_game_executable": "Select BlueArchive.exe",
+  "mod_file_label": "Mod File Selection"
+}

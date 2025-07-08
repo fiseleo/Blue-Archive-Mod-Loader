@@ -1,0 +1,13 @@
+{
+  "title": "Blue Archive Mod Loader",
+  "description": "點擊按鈕來選擇一個 .bundle 檔案。",
+  "select_file_button": "選擇 Mod 檔案",
+  "selected_file_label": "已選擇的檔案：",
+  "not_selected": "尚未選擇",
+  "user_cancelled": "使用者取消選擇",
+  "game_path_label": "遊戲路徑",
+  "set_game_path_button": "設定遊戲路徑",
+  "game_path_not_set": "尚未設定 BlueArchive.exe 路徑。",
+  "select_game_executable": "請選擇 BlueArchive.exe",
+  "mod_file_label": "Mod 檔案選擇"
+}
