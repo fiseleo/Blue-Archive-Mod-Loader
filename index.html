@@ -4,13 +4,15 @@
     <meta charset="UTF-8">
     <title></title>
     <style>
-        body { font-family: sans-serif; padding: 20px; }
-        strong { word-break: break-all; } /* 讓長路徑可以換行 */
+        body { font-family: sans-serif; padding: 20px; color: #333; }
+        strong { word-break: break-all; }
+        #status-message { color: #888; font-style: italic; min-height: 1.2em; }
     </style>
 </head>
 <body>
     <h2 data-i18n="game_path_label"></h2>
     <p><strong id="game-path"></strong></p>
+    <p id="status-message"></p> 
     <button id="set-game-path-btn" data-i18n="set_game_path_button"></button>
 
     <hr>

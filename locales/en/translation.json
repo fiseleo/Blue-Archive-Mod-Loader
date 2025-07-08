@@ -6,8 +6,13 @@
   "not_selected": "Not yet selected",
   "user_cancelled": "User cancelled selection",
   "game_path_label": "Game Path",
-  "set_game_path_button": "Set Game Path",
+  "set_game_path_button": "Set Game Path Manually",
   "game_path_not_set": "BlueArchive.exe path is not set.",
-  "select_game_executable": "Select BlueArchive.exe",
-  "mod_file_label": "Mod File Selection"
+  "select_game_executable": "Please select BlueArchive.exe",
+  "mod_file_label": "Mod File Selection",
+  "status_preparing_search": "Preparing to scan disks...",
+  "status_drives_found": "Detected drives: {{drives}}. Starting scan.",
+  "status_scanning_drive": "Scanning drive {{drive}} for BlueArchive.exe, this may take a while...",
+  "status_found": "Game found automatically: {{path}}",
+  "status_not_found": "Could not find the game automatically. Please select the path manually."
 }

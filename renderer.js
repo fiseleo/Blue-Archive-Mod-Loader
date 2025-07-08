@@ -39,6 +39,7 @@ function setupEventListeners() {
     const selectBundleBtn = document.getElementById('select-file-btn');
     const bundlePathElement = document.getElementById('file-path');
     const setGamePathBtn = document.getElementById('set-game-path-btn');
+    const statusMessageElement = document.getElementById('status-message');
 
     // 選擇 .bundle 檔案的按鈕
     selectBundleBtn.addEventListener('click', async () => {
@@ -52,6 +53,7 @@ function setupEventListeners() {
 
     // 設定遊戲路徑的按鈕
     setGamePathBtn.addEventListener('click', async () => {
+        statusMessageElement.innerText = ''; // 按下按鈕時清空狀態訊息
         const newPath = await window.api.selectGamePath();
         updateGamePathDisplay(newPath);
     });
@@ -59,6 +61,11 @@ function setupEventListeners() {
     // 監聽來自 main.js 的路徑更新通知
     window.api.onUpdateGamePath((path) => {
         updateGamePathDisplay(path);
+        statusMessageElement.innerText = ''; // 成功更新路徑後，清空狀態訊息
+    });
+
+    window.api.onUpdateStatus((message) => {
+        statusMessageElement.innerText = message;
     });
 }
 
@@ -66,7 +73,7 @@ function setupEventListeners() {
 document.addEventListener('DOMContentLoaded', async () => {
   await initializeI18n();
   setupEventListeners();
-  
+
   // 頁面載入後，立即從設定檔讀取並顯示遊戲路徑
   const initialGamePath = await window.config.getGamePath();
   updateGamePathDisplay(initialGamePath);
