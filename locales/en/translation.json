@@ -41,6 +41,6 @@
   "button_cancel": "Cancel",
   "button_apply": "Apply",
   "button_uninstall": "Uninstall",
-  "launch_game_button": "Launch Game",
+  "launch_game_button": "Launch BlueArchive",
   "action_status_launching": "Attempting to launch the game via Steam..."
 }
