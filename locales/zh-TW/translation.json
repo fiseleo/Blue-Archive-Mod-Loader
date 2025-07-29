@@ -42,6 +42,11 @@
   "button_apply": "應用",
   "button_uninstall": "解除安裝",
   "launch_game_button": "啟動Blue Archive",
-  "action_status_launching": "正在嘗試透過 Steam 啟動遊戲..."
+  "action_status_launching": "正在嘗試透過 Steam 啟動遊戲...",
+  "status_finding_steam": "正在嘗試透過 Steam 尋找遊戲...",
+  "status_steam_found": "找到 Steam 安裝目錄: {{path}}",
+  "status_checking_steam_library": "正在檢查 Steam 遊戲庫: {{library}}",
+  "status_found_steam": "已透過 Steam 找到遊戲: {{path}}",
+  "status_steam_not_found_fallback": "未在 Steam 遊戲庫中找到遊戲。將開始掃描硬碟..."
   
 }

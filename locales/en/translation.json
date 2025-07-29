@@ -42,5 +42,10 @@
   "button_apply": "Apply",
   "button_uninstall": "Uninstall",
   "launch_game_button": "Launch BlueArchive",
-  "action_status_launching": "Attempting to launch the game via Steam..."
+  "action_status_launching": "Attempting to launch the game via Steam...",
+  "status_finding_steam": "Attempting to find the game via Steam...",
+  "status_steam_found": "Found Steam installation directory: {{path}}",
+  "status_checking_steam_library": "Checking Steam game library: {{library}}",
+  "status_found_steam": "Game found via Steam: {{path}}",
+  "status_steam_not_found_fallback": "Game not found in Steam library. Starting disk scan..."
 }
