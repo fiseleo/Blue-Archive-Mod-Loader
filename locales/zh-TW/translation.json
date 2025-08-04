@@ -53,6 +53,9 @@
   "backup_success_log": "已備份: {{file}}",
   "apply_success_log": "已套用: {{file}} 於 {{path}}",
   "uninstall_remove_log": "已移除 Mod: {{file}}",
-  "uninstall_restore_log": "已還原原始檔案: {{file}}"
+  "uninstall_restore_log": "已還原原始檔案: {{file}}",
+  "status_crc_patching": "正在修正 Mod 的 CRC 校驗碼: {{file}}...",
+  "status_crc_success": "CRC 校驗碼修正成功: {{file}}",
+  "status_crc_failed": "CRC 校驗碼修正失敗: {{file}}。已跳過。"
   
 }

@@ -11,18 +11,30 @@ const { exec } = require('child_process');
 const store = new Store();
 
 
+let crcPatcher;
+try {
+    crcPatcher = require('./crc_patcher.js');
+    console.log('CRC Patcher module loaded successfully.');
+} catch (e) {
+    if (e.code === 'MODULE_NOT_FOUND') {
+        console.warn('CRC Patcher module (crc_patcher.js) not found. Mods will be applied without CRC correction.');
+        crcPatcher = {
+            manipulate_crc: async () => {
+                console.warn('CRC correction skipped because patcher module is missing.');
+                return true;
+            }
+        };
+    } else {
+        throw e;
+    }
+}
+
+
 const modBundleDir = path.join(app.getPath('userData'), 'ModBundle');
 if (!fs.existsSync(modBundleDir)) {
 	fs.mkdirSync(modBundleDir, { recursive: true });
 }
 
-
-/**
- * 遞迴地在目錄中尋找檔案
- * @param {string} directory - 要搜尋的起始目錄
- * @param {string} fileNameToFind - 要尋找的檔案名稱
- * @returns {Promise<string|null>} - 找到則返回完整路徑，否則返回 null
- */
 async function findFileRecursively(directory, fileNameToFind) {
     try {
         const items = await fs.promises.readdir(directory, { withFileTypes: true });
@@ -31,26 +43,18 @@ async function findFileRecursively(directory, fileNameToFind) {
             if (item.isDirectory()) {
                 const result = await findFileRecursively(fullPath, fileNameToFind);
                 if (result) {
-                    return result; // 在子目錄中找到，直接返回結果
+                    return result; 
                 }
             } else if (item.name.toLowerCase() === fileNameToFind.toLowerCase()) {
-                return fullPath; // 找到檔案，返回完整路徑
+                return fullPath; 
             }
         }
     } catch (err) {
-        // 忽略權限錯誤等問題
-        // console.error(`Error reading directory ${directory}:`, err.code);
     }
-    return null; // 在當前目錄及其子目錄中都沒找到
+    return null; 
 }
 
 
-/**
- * 在 BlueArchive_Data 目錄下深度搜尋目標檔案
- * @param {string} modFileName - 要搜尋的檔案名稱
- * @param {BrowserWindow} win - 用於發送狀態更新的視窗物件
- * @returns {Promise<string|null>} - 返回找到的檔案完整路徑，或 null
- */
 async function findTargetFile(modFileName, win) {
 	const gamePath = store.get('gamePath');
 	if (!gamePath) {
@@ -433,7 +437,7 @@ app.whenReady().then(async () => {
 		const res = await dialog.showMessageBox(win, {
 			type: 'warning',
 			buttons: [i18next.t('button_cancel'), i18next.t('button_apply')],
-			defaultId: 1, // '套用' 為預設
+			defaultId: 1, 
 			title: i18next.t('apply_mods_confirm_title'),
 			message: i18next.t('apply_mods_confirm_message'),
 			cancelId: 0,
@@ -447,22 +451,35 @@ app.whenReady().then(async () => {
 		let operationsLog = [];
 
 		for (const mod of modsToApply) {
+			// 步驟 1: 尋找原始遊戲檔案
 			const targetPath = await findTargetFile(mod.fileName, win);
-
 			if (!targetPath) {
 				const logMsg = i18next.t('original_file_not_found', { file: mod.fileName });
 				operationsLog.push(logMsg);
 				console.warn(logMsg);
 				continue;
 			}
+            
+            win.webContents.send('update-action-status', i18next.t('status_crc_patching', { file: mod.fileName }));
+            const patchSuccess = await crcPatcher.manipulate_crc(targetPath, mod.path);
 
+            if (!patchSuccess) {
+                const logMsg = i18next.t('status_crc_failed', { file: mod.fileName });
+                operationsLog.push(logMsg);
+                console.warn(logMsg);
+                continue;
+            }
+            win.webContents.send('update-action-status', i18next.t('status_crc_success', { file: mod.fileName }));
+
+
+			// 步驟 3: 備份並安裝【已修正過 CRC】的 Mod
 			const backupPath = `${targetPath}.bak`;
-
 			try {
 				if (fs.existsSync(targetPath) && !fs.existsSync(backupPath)) {
 					fs.renameSync(targetPath, backupPath);
 					operationsLog.push(i18next.t('backup_success_log', { file: path.basename(backupPath) }));
 				}
+				// 複製已在記憶體中被 crcPatcher 覆蓋的 mod.path 檔案
 				fs.copyFileSync(mod.path, targetPath);
 				operationsLog.push(i18next.t('apply_success_log', { file: mod.fileName, path: path.dirname(targetPath) }));
 			} catch (err) {
@@ -475,7 +492,7 @@ app.whenReady().then(async () => {
 		return { success: true, message: i18next.t('operation_success'), log: operationsLog };
 	});
 
-	// ----- '解除安裝 Mod' 邏輯修改 -----
+	
 	ipcMain.handle('mods:uninstall', async (event) => {
 		const win = BrowserWindow.fromWebContents(event.sender);
 		if (!store.get('gamePath')) {
@@ -485,7 +502,7 @@ app.whenReady().then(async () => {
 		const res = await dialog.showMessageBox(win, {
 			type: 'warning',
 			buttons: [i18next.t('button_cancel'), i18next.t('button_apply')],
-			defaultId: 1, // '套用' 為預設
+			defaultId: 1, 
 			title: i18next.t('uninstall_mods_confirm_title'),
 			message: i18next.t('uninstall_mods_confirm_message'),
 			cancelId: 0,
@@ -500,7 +517,6 @@ app.whenReady().then(async () => {
 
 		for (const mod of modsToUninstall) {
 			const targetPath = await findTargetFile(mod.fileName, win);
-
 			if (!targetPath) {
 				const logMsg = i18next.t('original_file_not_found', { file: mod.fileName });
 				operationsLog.push(logMsg);
@@ -509,7 +525,6 @@ app.whenReady().then(async () => {
 			}
 
 			const backupPath = `${targetPath}.bak`;
-
 			try {
 				if (fs.existsSync(targetPath)) {
 					fs.unlinkSync(targetPath);

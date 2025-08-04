@@ -53,5 +53,8 @@
   "backup_success_log": "Backup successful: {{file}}",
   "apply_success_log": "Applied: {{file}} to {{path}}",
   "uninstall_remove_log": "Removed mod: {{file}}",
-  "uninstall_restore_log": "Restored original file: {{file}}"
+  "uninstall_restore_log": "Restored original file: {{file}}",
+  "status_crc_patching": "Patching CRC for mod: {{file}}...",
+  "status_crc_success": "CRC patching successful: {{file}}",
+  "status_crc_failed": "CRC patching failed: {{file}}. Skipping."
 }

@@ -1,28 +1,18 @@
 {
   "name": "blue-archive-mod-loader",
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "description": "Blue Archive Mod Loader is a tool for managing mods for the game Blue Archive.",
   "main": "main.js",
-  "scripts": {
-    "start": "electron .",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder"
-  },
+  "author": "fiseleo",
+  "license": "ISC",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fiseleo/Blue-Archive-Mod-Loader.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/fiseleo/Blue-Archive-Mod-Loader/issues"
-  },
-  "homepage": "https://github.com/fiseleo/Blue-Archive-Mod-Loader#readme",
-  "description": "",
-  "devDependencies": {
-    "electron": "^37.2.0",
-    "electron-builder": "^26.0.12"
+  "scripts": {
+    "start": "electron .",
+    "build": "cross-env PYTHONUTF8=1 node obfuscate.js && node copy-assets.js && electron-builder",
+    "dist": "npm run build"
   },
   "dependencies": {
     "drivelist": "^12.0.2",
@@ -30,5 +20,31 @@
     "fast-glob": "^3.3.3",
     "i18next": "^25.3.1",
     "i18next-fs-backend": "^2.6.0"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12",
+    "fs-extra": "^11.3.0",
+    "javascript-obfuscator": "^4.1.1"
+  },
+  "build": {
+    "appId": "com.fiseleo.bluearchivemodloader",
+    "productName": "Blue Archive Mod Loader",
+    "copyright": "Copyright © 2025 ${author}",
+    "directories": {
+      "output": "release",
+      "app": "dist"
+    },
+    "files": [
+      "**/*"
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "nodeGypRebuild": false
   }
 }
