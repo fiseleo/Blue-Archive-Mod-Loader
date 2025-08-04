@@ -47,5 +47,11 @@
   "status_steam_found": "Found Steam installation directory: {{path}}",
   "status_checking_steam_library": "Checking Steam game library: {{library}}",
   "status_found_steam": "Game found via Steam: {{path}}",
-  "status_steam_not_found_fallback": "Game not found in Steam library. Starting disk scan..."
+  "status_steam_not_found_fallback": "Game not found in Steam library. Starting disk scan...",
+  "status_searching_for_file": "Searching for original file: {{file}}...",
+  "original_file_not_found": "Original file not found: {{file}}. Skipping",
+  "backup_success_log": "Backup successful: {{file}}",
+  "apply_success_log": "Applied: {{file}} to {{path}}",
+  "uninstall_remove_log": "Removed mod: {{file}}",
+  "uninstall_restore_log": "Restored original file: {{file}}"
 }

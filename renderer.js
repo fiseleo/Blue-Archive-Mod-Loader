@@ -1,17 +1,15 @@
 // renderer.js
 
-// 函式：初始化 i18next
 async function initializeI18n() {
     const userLocale = await window.i18n.getLocale();
 
     await i18next.init({
-        lng: userLocale, // 從主行程取得當前語言
-        fallbackLng: 'en', // 備用語言
+        lng: userLocale, 
+        fallbackLng: 'en', 
         resources: {
             en: {
                 translation: await fetch('./locales/en/translation.json').then(res => res.json())
             },
-            // 這裡你可以根據你的語言檔決定要載入哪一個
             'zh-TW': {
                 translation: await fetch('./locales/zh-TW/translation.json').then(res => res.json())
             }
@@ -20,7 +18,7 @@ async function initializeI18n() {
     updateContent();
 }
 
-// 函式：更新頁面所有標記的文字
+
 function updateContent() {
     document.title = i18next.t('title');
     const elements = document.querySelectorAll('[data-i18n]');
@@ -30,7 +28,6 @@ function updateContent() {
     });
 }
 
-// 函式：更新遊戲路徑的顯示
 function updateGamePathDisplay(paths) {
     const gamePathElement = document.getElementById('game-path');
     const gameBundlePathElement = document.getElementById('game-bundle-path');
@@ -57,7 +54,8 @@ function setupEventListeners() {
     applyBtn.addEventListener('click', async () => {
         actionStatusElement.innerText = i18next.t('action_status_applying');
         const result = await window.api.applyMods();
-        actionStatusElement.innerText = result.message;
+        actionStatusElement.innerText = result.message; // 顯示最終結果
+        // 5秒後清除訊息
         setTimeout(() => { actionStatusElement.innerText = ''; }, 5000);
     });
     selectModBtn.addEventListener('click', async () => {
@@ -73,14 +71,14 @@ function setupEventListeners() {
     uninstallBtn.addEventListener('click', async () => {
         actionStatusElement.innerText = i18next.t('action_status_uninstalling');
         const result = await window.api.uninstallMods();
-        actionStatusElement.innerText = result.message;
+        actionStatusElement.innerText = result.message; // 顯示最終結果
         setTimeout(() => { actionStatusElement.innerText = ''; }, 5000);
     });
 
     launchGameBtn.addEventListener('click', async () => {
         actionStatusElement.innerText = i18next.t('action_status_launching');
         await window.api.launchGame();
-        setTimeout(() => { actionStatusElement.innerText = ''; }, 5000);
+        setTimeout(() => { actionStatusElement.innerText = ''; }, 3000);
     });
 
     window.api.onUpdateGamePath((paths) => {
@@ -90,6 +88,11 @@ function setupEventListeners() {
 
     window.api.onUpdateStatus((message) => {
         statusMessageElement.innerText = message;
+    });
+    
+    // ❗️ 新增：監聽並顯示即時操作狀態
+    window.api.onUpdateActionStatus((message) => {
+        actionStatusElement.innerText = message;
     });
 }
 
@@ -142,7 +145,7 @@ function renderModTable(mods) {
         deleteBtn.title = i18next.t('delete_mod');
         deleteBtn.addEventListener('click', async () => {
             const updatedMods = await window.api.deleteMod(mod.id);
-            renderModTable(updatedMods); // 刪除後重新渲染表格
+            renderModTable(updatedMods);
         });
         actionsCell.appendChild(deleteBtn);
     });
@@ -153,11 +156,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initializeI18n();
     setupEventListeners();
 
-    // 載入遊戲路徑
     const initialPaths = await window.config.getGamePath();
     updateGamePathDisplay(initialPaths);
 
-    // ❗️ 新增：載入並渲染現有的 Mod 列表
     const initialMods = await window.api.getMods();
     renderModTable(initialMods);
 });

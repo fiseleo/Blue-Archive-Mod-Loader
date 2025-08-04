@@ -47,6 +47,12 @@
   "status_steam_found": "找到 Steam 安裝目錄: {{path}}",
   "status_checking_steam_library": "正在檢查 Steam 遊戲庫: {{library}}",
   "status_found_steam": "已透過 Steam 找到遊戲: {{path}}",
-  "status_steam_not_found_fallback": "未在 Steam 遊戲庫中找到遊戲。將開始掃描硬碟..."
+  "status_steam_not_found_fallback": "未在 Steam 遊戲庫中找到遊戲。將開始掃描硬碟...",
+  "status_searching_for_file": "正在搜尋原始檔案: {{file}}...",
+  "original_file_not_found": "找不到原始檔案: {{file}}。已跳過。",
+  "backup_success_log": "已備份: {{file}}",
+  "apply_success_log": "已套用: {{file}} 於 {{path}}",
+  "uninstall_remove_log": "已移除 Mod: {{file}}",
+  "uninstall_restore_log": "已還原原始檔案: {{file}}"
   
 }

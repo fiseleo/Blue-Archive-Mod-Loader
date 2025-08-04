@@ -6,6 +6,9 @@ contextBridge.exposeInMainWorld('api', {
   selectGamePath: () => ipcRenderer.invoke('dialog:selectGamePath'),
   onUpdateGamePath: (callback) => ipcRenderer.on('update-game-path', (_event, value) => callback(value)),
   onUpdateStatus: (callback) => ipcRenderer.on('update-status', (_event, value) => callback(value)),
+  
+  // ❗️ 新增：監聽操作狀態的即時更新
+  onUpdateActionStatus: (callback) => ipcRenderer.on('update-action-status', (_event, value) => callback(value)),
 
   // Mod 檔案相關
   selectModFiles: () => ipcRenderer.invoke('dialog:openFile'),
