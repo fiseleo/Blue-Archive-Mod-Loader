@@ -1,4 +1,5 @@
 const fs = require('fs').promises;
+const path = require('path'); 
 
 
 
@@ -123,10 +124,20 @@ async function manipulate_crc(original_path, modified_path) {
         const modified_data = await fs.readFile(modified_path);
 
         const original_crc = compute_crc32(original_data);
-        const modified_crc = compute_crc32(Buffer.concat([modified_data, Buffer.alloc(4)]));
+        const current_modified_crc = compute_crc32(modified_data);
+
+        // ❗️ 新增：如果 CRC 已經相符，則跳過後續步驟
+        if (current_modified_crc === original_crc) {
+            console.log(`CRC for "${path.basename(modified_path)}" already matches the original. Skipping patch.`);
+            return true;
+        }
+
+        console.log(`CRC mismatch for "${path.basename(modified_path)}". Original: ${original_crc.toString(16)}, Mod: ${current_modified_crc.toString(16)}. Starting patch...`);
+
+        const modified_crc_with_padding = compute_crc32(Buffer.concat([modified_data, Buffer.alloc(4)]));
 
         const original_bytes = u32_to_bytes_be(original_crc);
-        const modified_bytes = u32_to_bytes_be(modified_crc);
+        const modified_bytes = u32_to_bytes_be(modified_crc_with_padding);
 
         const xor_result = xor_bytes(original_bytes, modified_bytes);
         const reversed_bytes = reverse_bits_in_bytes(xor_result);
@@ -145,16 +156,19 @@ async function manipulate_crc(original_path, modified_path) {
         if (final_crc === original_crc) {
             // 重要：用修正後的數據【覆蓋】Mod檔案
             await fs.writeFile(modified_path, final_data);
+            console.log(`Successfully patched CRC for "${path.basename(modified_path)}". New CRC: ${final_crc.toString(16)}`);
             return true;
         }
+
+        console.warn(`CRC patching FAILED for "${path.basename(modified_path)}". Final CRC (${final_crc.toString(16)}) did not match original CRC (${original_crc.toString(16)}).`);
         return false;
     } catch (err) {
-        console.error(`CRC manipulation failed for ${modified_path}:`, err);
+        console.error(`CRC manipulation process failed for ${modified_path}:`, err);
         return false;
     }
 }
 
-// 將主要功能匯出，以便 main.js 引用
+
 module.exports = {
     manipulate_crc,
 };
