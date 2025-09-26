@@ -10,6 +10,15 @@ const crypto = require('crypto');
 const { exec } = require('child_process');
 const store = new Store();
 
+const SUPPORTED_EXTENSIONS = [
+    '.ogg', 
+    '.mp4', 
+    '.jpg', 
+    '.jpeg',
+    '.png',
+	'.bundle'
+];
+
 
 let crcPatcher;
 try {
@@ -332,7 +341,10 @@ app.whenReady().then(async () => {
 		const { canceled, filePaths } = await dialog.showOpenDialog({
 			title: i18next.t('select_file_button'),
 			properties: ['openFile', 'multiSelections'],
-			filters: [{ name: 'Bundle Files', extensions: ['bundle'] }]
+			filters: [
+				{ name: 'Mod Files', extensions: ['bundle', 'ogg', 'mp4', 'jpg', 'jpeg', 'png'] },
+				{ name: 'All Files', extensions: ['*'] }
+			]
 		});
 
 		if (canceled || filePaths.length === 0) {
@@ -430,6 +442,8 @@ app.whenReady().then(async () => {
 	// ----- '套用 Mod' 邏輯修改 -----
 	ipcMain.handle('mods:apply', async (event) => {
 		const win = BrowserWindow.fromWebContents(event.sender);
+		const mods = store.get('mods', []).filter(m => m.enabled);
+
 		if (!store.get('gamePath')) {
 			return { success: false, message: i18next.t('game_path_not_configured') };
 		}
@@ -447,46 +461,39 @@ app.whenReady().then(async () => {
 			return { success: false, message: i18next.t('operation_cancelled') };
 		}
 
-		const modsToApply = store.get('mods', []).filter(m => m.enabled);
 		let operationsLog = [];
 
-		for (const mod of modsToApply) {
+		for (const mod of mods) {
 			// 步驟 1: 尋找原始遊戲檔案
-			const targetPath = await findTargetFile(mod.fileName, win);
-			if (!targetPath) {
+			const targetFilePath = await findTargetFile(mod.fileName, win);
+			if (!targetFilePath) {
 				const logMsg = i18next.t('original_file_not_found', { file: mod.fileName });
 				operationsLog.push(logMsg);
 				console.warn(logMsg);
 				continue;
 			}
-            
-            win.webContents.send('update-action-status', i18next.t('status_crc_patching', { file: mod.fileName }));
-            const patchSuccess = await crcPatcher.manipulate_crc(targetPath, mod.path);
 
-            if (!patchSuccess) {
-                const logMsg = i18next.t('status_crc_failed', { file: mod.fileName });
-                operationsLog.push(logMsg);
-                console.warn(logMsg);
-                continue;
-            }
-            win.webContents.send('update-action-status', i18next.t('status_crc_success', { file: mod.fileName }));
-
-
-			// 步驟 3: 備份並安裝【已修正過 CRC】的 Mod
-			const backupPath = `${targetPath}.bak`;
 			try {
-				if (fs.existsSync(targetPath) && !fs.existsSync(backupPath)) {
-					fs.renameSync(targetPath, backupPath);
-					operationsLog.push(i18next.t('backup_success_log', { file: path.basename(backupPath) }));
+				const modExtension = path.extname(mod.fileName).toLowerCase();
+				const supportedForCrc = ['.bundle', '.ogg', 'mp4', '.jpg', '.jpeg', '.png'].includes(modExtension);
+
+				if (supportedForCrc && crcPatcher) {
+					win.webContents.send('update-action-status', i18next.t('status_crc_patching', { file: mod.fileName }));
+					await crcPatcher.manipulate_crc(targetFilePath, mod.path);
+					console.log(`CRC manipulation successful for ${mod.fileName}`);
+				} else {
+					win.webContents.send('update-action-status', i18next.t('status_copying_file', { file: mod.fileName }));
+					fs.copyFileSync(mod.path, targetFilePath);
+					console.log(`Copied ${mod.fileName} to ${targetFilePath}`);
 				}
-				// 複製已在記憶體中被 crcPatcher 覆蓋的 mod.path 檔案
-				fs.copyFileSync(mod.path, targetPath);
-				operationsLog.push(i18next.t('apply_success_log', { file: mod.fileName, path: path.dirname(targetPath) }));
 			} catch (err) {
-				console.error(`Failed to apply mod ${mod.fileName}:`, err);
-				operationsLog.push(`Error applying ${mod.fileName}: ${err.message}`);
-				return { success: false, message: i18next.t('operation_failed'), log: operationsLog };
+				console.error(`Error applying mod ${mod.fileName}:`, err);
+				win.webContents.send('update-action-status', i18next.t('error_applying_mod', { file: mod.fileName, error: err.message }));
+				operationsLog.push(i18next.t('error_applying_mod', { file: mod.fileName, error: err.message }));
+				continue;
 			}
+
+			operationsLog.push(i18next.t('apply_success_log', { file: mod.fileName, path: path.dirname(targetFilePath) }));
 		}
 		console.log(operationsLog);
 		return { success: true, message: i18next.t('operation_success'), log: operationsLog };
