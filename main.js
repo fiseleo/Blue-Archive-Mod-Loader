@@ -410,7 +410,21 @@ app.whenReady().then(async () => {
 	});
 
 	ipcMain.handle('mods:get', () => {
-		return store.get('mods', []);
+		const mods = store.get('mods', []);
+		// Add installation date for existing mods that don't have it
+		const updatedMods = mods.map(mod => {
+			if (!mod.installedDate) {
+				return { ...mod, installedDate: new Date().toISOString() };
+			}
+			return mod;
+		});
+		
+		// Save the updated mods if any changes were made
+		if (updatedMods.some((mod, index) => !mods[index].installedDate)) {
+			store.set('mods', updatedMods);
+		}
+		
+		return updatedMods;
 	});
 
 	ipcMain.handle('mods:update', (_event, updatedMod) => {
