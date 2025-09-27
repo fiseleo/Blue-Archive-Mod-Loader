@@ -417,4 +417,4 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
-crc_patcher.cs
+crc_patcher.js
