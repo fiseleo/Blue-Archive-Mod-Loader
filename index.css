@@ -1,0 +1,145 @@
+/* index.css */
+:root {
+    --primary-color: #007bff;
+    --primary-hover-color: #0056b3;
+    --danger-color: #dc3545;
+    --danger-hover-color: #c82333;
+    --light-gray-color: #f8f9fa;
+    --gray-color: #6c757d;
+    --border-color: #dee2e6;
+    --text-color: #343a40;
+    --background-color: #ffffff;
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+    font-family: var(--font-family);
+    padding: 20px;
+    margin: 0 auto;
+    max-width: 900px;
+    background-color: var(--light-gray-color);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+h2 {
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 8px;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+p {
+    margin: 0.5rem 0;
+}
+
+strong {
+    word-break: break-all;
+    font-weight: 600;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 2rem 0;
+}
+
+#status-message {
+    color: var(--gray-color);
+    font-style: italic;
+    min-height: 1.2em;
+    margin-top: 1rem;
+}
+
+#action-status {
+    margin: 0;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+/* --- Buttons --- */
+button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s ease-in-out;
+}
+
+button:hover {
+    background-color: var(--primary-hover-color);
+}
+
+#uninstall-mods-btn {
+    background-color: var(--danger-color);
+}
+
+#uninstall-mods-btn:hover {
+    background-color: var(--danger-hover-color);
+}
+
+/* --- Table --- */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    background-color: var(--background-color);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+th, td {
+    border: 1px solid var(--border-color);
+    padding: 12px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+th {
+    background-color: var(--light-gray-color);
+    font-weight: 600;
+}
+
+tbody tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+tbody tr:hover {
+    background-color: #e9ecef;
+}
+
+.mod-name-input {
+    width: 95%;
+    border: 1px solid var(--border-color);
+    padding: 6px;
+    border-radius: 4px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.mod-name-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.delete-btn {
+    color: var(--danger-color);
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: transform 0.2s;
+}
+
+.delete-btn:hover {
+    transform: scale(1.2);
+}
+
+/* --- Layout --- */
+.action-bar {
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}

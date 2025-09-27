@@ -3,16 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title></title>
-    <style>
-        body { font-family: sans-serif; padding: 20px; color: #333; }
-        strong { word-break: break-all; }
-        #status-message { color: #888; font-style: italic; min-height: 1.2em; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        .mod-name-input { width: 95%; border: 1px solid #ddd; padding: 4px; }
-        .delete-btn { color: red; cursor: pointer; }
-    </style>
+    <link rel="stylesheet" href="index.css">
 </head>
 <body>
     <h2 data-i18n="game_path_label"></h2>
@@ -41,11 +32,11 @@
             </tbody>
     </table>
 
-    <div style="margin-top: 20px; display: flex; align-items: center; gap: 10px;">
+    <div class="action-bar">
         <button id="apply-mods-btn" data-i18n="apply_mods_button"></button>
         <button id="uninstall-mods-btn" data-i18n="uninstall_mods_button"></button>
         <button id="launch-game-btn" data-i18n="launch_game_button"></button>
-        <p id="action-status" style="margin: 0;"></p>
+        <p id="action-status"></p>
     </div>
 
     <script src="./node_modules/i18next/dist/umd/i18next.min.js"></script>
