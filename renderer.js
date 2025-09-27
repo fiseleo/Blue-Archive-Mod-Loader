@@ -12,6 +12,9 @@ async function initializeI18n() {
             },
             'zh-TW': {
                 translation: await fetch('./locales/zh-TW/translation.json').then(res => res.json())
+            },
+            'zh-CN': {
+                translation: await fetch('./locales/zh-CN/translation.json').then(res => res.json())
             }
         }
     });
