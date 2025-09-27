@@ -26,6 +26,36 @@ function updateContent() {
         const key = el.getAttribute('data-i18n');
         el.innerHTML = i18next.t(key);
     });
+    
+    // Update theme toggle button title
+    const themeToggleBtn = document.getElementById('theme-toggle-btn');
+    if (themeToggleBtn) {
+        themeToggleBtn.title = i18next.t('toggle_theme');
+    }
+}
+
+// Theme management functions
+function getStoredTheme() {
+    return localStorage.getItem('theme') || 'light';
+}
+
+function setStoredTheme(theme) {
+    localStorage.setItem('theme', theme);
+}
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    const themeIcon = document.querySelector('.theme-icon');
+    if (themeIcon) {
+        themeIcon.textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+}
+
+function toggleTheme() {
+    const currentTheme = getStoredTheme();
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    setStoredTheme(newTheme);
+    applyTheme(newTheme);
 }
 
 function updateGamePathDisplay(paths) {
@@ -96,35 +126,81 @@ function setupEventListeners() {
     const selectModBtn = document.getElementById('select-file-btn');
     const selectAllBtn = document.getElementById('select-all-btn');
     const setGamePathBtn = document.getElementById('set-game-path-btn');
+    const themeToggleBtn = document.getElementById('theme-toggle-btn');
     const statusMessageElement = document.getElementById('status-message');
     const applyBtn = document.getElementById('apply-mods-btn');
     const uninstallBtn = document.getElementById('uninstall-mods-btn');
     const launchGameBtn = document.getElementById('launch-game-btn');
     const actionStatusElement = document.getElementById('action-status');
 
-    applyBtn.addEventListener('click', async () => {
+    // Theme toggle event listener with enhanced feedback
+    themeToggleBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleTheme();
+        // Add visual feedback
+        themeToggleBtn.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            themeToggleBtn.style.transform = '';
+        }, 150);
+    });
+
+    applyBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        applyBtn.disabled = true;
+        applyBtn.classList.add('loading');
         actionStatusElement.innerText = i18next.t('action_status_applying');
-        const result = await window.api.applyMods();
-        actionStatusElement.innerText = result.message; // 顯示最終結果
-        // 5秒後清除訊息
-        setTimeout(() => { actionStatusElement.innerText = ''; }, 5000);
+        
+        try {
+            const result = await window.api.applyMods();
+            actionStatusElement.innerText = result.message; // 顯示最終結果
+            // 5秒後清除訊息
+            setTimeout(() => { actionStatusElement.innerText = ''; }, 5000);
+        } finally {
+            applyBtn.disabled = false;
+            applyBtn.classList.remove('loading');
+        }
     });
 
-    selectModBtn.addEventListener('click', async () => {
-        const mods = await window.api.selectModFiles();
-        if (mods) renderModTable(mods);
+    selectModBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        selectModBtn.disabled = true;
+        selectModBtn.classList.add('loading');
+        
+        try {
+            const mods = await window.api.selectModFiles();
+            if (mods) renderModTable(mods);
+        } finally {
+            selectModBtn.disabled = false;
+            selectModBtn.classList.remove('loading');
+        }
     });
 
-    selectAllBtn.addEventListener('click', () => {
+    selectAllBtn.addEventListener('click', (e) => {
+        e.preventDefault();
         selectAllMods();
+        // Add visual feedback
+        selectAllBtn.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            selectAllBtn.style.transform = '';
+        }, 150);
     });
 
-    setGamePathBtn.addEventListener('click', async () => {
-        const paths = await window.api.selectGamePath();
-        if (paths) updateGamePathDisplay(paths);
+    setGamePathBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        setGamePathBtn.disabled = true;
+        setGamePathBtn.classList.add('loading');
+        
+        try {
+            const paths = await window.api.selectGamePath();
+            if (paths) updateGamePathDisplay(paths);
+        } finally {
+            setGamePathBtn.disabled = false;
+            setGamePathBtn.classList.remove('loading');
+        }
     });
 
-    uninstallBtn.addEventListener('click', async () => {
+    uninstallBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
         const tableBody = document.getElementById('mod-table-body');
         const selectedCheckboxes = tableBody.querySelectorAll('input[type="checkbox"]:checked');
         
@@ -136,21 +212,38 @@ function setupEventListeners() {
 
         const selectedModIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.modId);
         
+        uninstallBtn.disabled = true;
+        uninstallBtn.classList.add('loading');
         actionStatusElement.innerText = i18next.t('action_status_uninstalling');
-        const result = await window.api.uninstallMods(selectedModIds);
-        actionStatusElement.innerText = result.message; // 顯示最終結果
         
-        // Refresh the mod table after uninstall
-        const updatedMods = await window.api.getMods();
-        renderModTable(updatedMods);
-        
-        setTimeout(() => { actionStatusElement.innerText = ''; }, 5000);
+        try {
+            const result = await window.api.uninstallMods(selectedModIds);
+            actionStatusElement.innerText = result.message; // 顯示最終結果
+            
+            // Refresh the mod table after uninstall
+            const updatedMods = await window.api.getMods();
+            renderModTable(updatedMods);
+            
+            setTimeout(() => { actionStatusElement.innerText = ''; }, 5000);
+        } finally {
+            uninstallBtn.disabled = false;
+            uninstallBtn.classList.remove('loading');
+        }
     });
 
-    launchGameBtn.addEventListener('click', async () => {
+    launchGameBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        launchGameBtn.disabled = true;
+        launchGameBtn.classList.add('loading');
         actionStatusElement.innerText = i18next.t('action_status_launching');
-        await window.api.launchGame();
-        setTimeout(() => { actionStatusElement.innerText = ''; }, 3000);
+        
+        try {
+            await window.api.launchGame();
+            setTimeout(() => { actionStatusElement.innerText = ''; }, 3000);
+        } finally {
+            launchGameBtn.disabled = false;
+            launchGameBtn.classList.remove('loading');
+        }
     });
 
     window.api.onUpdateGamePath((paths) => {
@@ -175,7 +268,7 @@ function renderModTable(mods) {
     if (!mods || mods.length === 0) {
         const row = tableBody.insertRow();
         const cell = row.insertCell();
-        cell.colSpan = 4;
+        cell.colSpan = 5; // Updated to 5 columns
         cell.textContent = i18next.t('no_mods_installed');
         cell.style.textAlign = 'center';
         return;
@@ -218,7 +311,7 @@ function renderModTable(mods) {
         const fileNameCell = row.insertCell();
         fileNameCell.textContent = mod.fileName;
         if (isConflicted) {
-            fileNameCell.style.color = '#ff6b6b';
+            fileNameCell.className = 'conflict-filename';
             fileNameCell.title = i18next.t('conflicting_mod_warning', { filename: mod.fileName });
         }
 
@@ -232,6 +325,23 @@ function renderModTable(mods) {
             window.api.updateMod({ id: mod.id, modName: modNameInput.value });
         });
         modNameCell.appendChild(modNameInput);
+
+        // 安裝日期
+        const installedDateCell = row.insertCell();
+        const installedDate = mod.installedDate ? new Date(mod.installedDate) : null;
+        if (installedDate && !isNaN(installedDate)) {
+            installedDateCell.textContent = installedDate.toLocaleDateString('zh-TW', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } else {
+            installedDateCell.textContent = i18next.t('unknown_install_date');
+        }
+        installedDateCell.style.fontSize = '0.9rem';
+        installedDateCell.style.color = '#6c757d';
 
         // 刪除按鈕
         const actionsCell = row.insertCell();
@@ -250,16 +360,20 @@ function renderModTable(mods) {
     if (hasConflicts) {
         const warningRow = tableBody.insertRow(0);
         const warningCell = warningRow.insertCell();
-        warningCell.colSpan = 4;
-        warningCell.innerHTML = '<strong style="color: #ff6b6b;">⚠️ ' + i18next.t('conflicting_mod_warning', { filename: '' }).replace(' {{filename}}', '') + '</strong>';
+        warningCell.colSpan = 5; // Updated to 5 columns
+        warningCell.className = 'conflict-warning';
+        warningCell.innerHTML = '<strong>⚠️ ' + i18next.t('conflicting_mod_warning', { filename: '' }).replace(' {{filename}}', '') + '</strong>';
         warningCell.style.textAlign = 'center';
-        warningCell.style.backgroundColor = '#fff3cd';
         warningCell.style.padding = '10px';
     }
 }
 
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize theme before other content
+    const storedTheme = getStoredTheme();
+    applyTheme(storedTheme);
+    
     await initializeI18n();
     setupEventListeners();
 
