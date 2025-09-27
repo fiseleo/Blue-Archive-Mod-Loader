@@ -8,7 +8,72 @@ const fg = require('fast-glob');
 const drivelist = require('drivelist');
 const crypto = require('crypto');
 const { exec } = require('child_process');
+
+// Set console encoding for Windows to properly display UTF-8 characters
+if (process.platform === 'win32') {
+    // Set Node.js output encoding
+    if (process.stdout && process.stdout.setDefaultEncoding) {
+        process.stdout.setDefaultEncoding('utf8');
+    }
+    if (process.stderr && process.stderr.setDefaultEncoding) {
+        process.stderr.setDefaultEncoding('utf8');
+    }
+    
+    // Set Windows console code page to UTF-8
+    try {
+        exec('chcp 65001 >nul 2>&1', (error) => {
+            if (error) {
+                console.log('Console encoding setup: Using default encoding');
+            } else {
+                console.log('Console encoding set to UTF-8');
+            }
+        });
+    } catch (error) {
+        console.log('Console encoding setup: Using default encoding');
+    }
+}
+
 const store = new Store();
+
+// Helper function to safely log to console without encoding issues
+function safeLog(message, data = '') {
+    try {
+        if (data) {
+            console.log(`${message}:`, data);
+        } else {
+            console.log(message);
+        }
+    } catch (error) {
+        // Fallback for encoding issues
+        console.log('Log output (encoding safe)');
+    }
+}
+
+function safeWarn(message, data = '') {
+    try {
+        if (data) {
+            console.warn(`${message}:`, data);
+        } else {
+            console.warn(message);
+        }
+    } catch (error) {
+        // Fallback for encoding issues
+        console.warn('Warning output (encoding safe)');
+    }
+}
+
+function safeError(message, error = null) {
+    try {
+        if (error) {
+            console.error(`${message}:`, error);
+        } else {
+            console.error(message);
+        }
+    } catch (err) {
+        // Fallback for encoding issues
+        console.error('Error output (encoding safe)');
+    }
+}
 
 const SUPPORTED_EXTENSIONS = [
     '.ogg', 
@@ -501,7 +566,7 @@ app.whenReady().then(async () => {
 			if (!targetFilePath) {
 				const logMsg = i18next.t('original_file_not_found', { file: mod.fileName });
 				operationsLog.push(logMsg);
-				console.warn(logMsg);
+				safeWarn('Original file not found', mod.fileName);
 				continue;
 			}
 
@@ -509,10 +574,20 @@ app.whenReady().then(async () => {
 				const modExtension = path.extname(mod.fileName).toLowerCase();
 				const supportedForCrc = SUPPORTED_EXTENSIONS.includes(modExtension);
 
+				// 備份原始檔案 (如果還沒有備份)
+				const backupPath = `${targetFilePath}.bak`;
+				if (!fs.existsSync(backupPath)) {
+					fs.copyFileSync(targetFilePath, backupPath);
+					console.log(`Backup created: ${path.basename(targetFilePath)}.bak`);
+				}
+
 				if (supportedForCrc && crcPatcher) {
 					win.webContents.send('update-action-status', i18next.t('status_crc_patching', { file: mod.fileName }));
+					// CRC 修補器會先修補 mod 檔案，然後我們需要將修補後的檔案覆蓋到目標位置
 					await crcPatcher.manipulate_crc(targetFilePath, mod.path);
-					console.log(`CRC manipulation successful for ${mod.fileName}`);
+					// 將修補後的 mod 檔案覆蓋到遊戲目錄
+					fs.copyFileSync(mod.path, targetFilePath);
+					console.log(`CRC patched and applied: ${mod.fileName}`);
 				} else {
 					win.webContents.send('update-action-status', i18next.t('status_copying_file', { file: mod.fileName }));
 					fs.copyFileSync(mod.path, targetFilePath);
@@ -527,7 +602,7 @@ app.whenReady().then(async () => {
 
 			operationsLog.push(i18next.t('apply_success_log', { file: mod.fileName, path: path.dirname(targetFilePath) }));
 		}
-		console.log(operationsLog);
+		safeLog('Apply operations completed. Total operations', operationsLog.length);
 		return { success: true, message: i18next.t('operation_success'), log: operationsLog };
 	});
 
@@ -566,19 +641,21 @@ app.whenReady().then(async () => {
 			if (!targetPath) {
 				const logMsg = i18next.t('original_file_not_found', { file: mod.fileName });
 				operationsLog.push(logMsg);
-				console.warn(logMsg);
+				safeWarn('Target file not found for mod', mod.fileName);
 				continue;
 			}
 
 			const backupPath = `${targetPath}.bak`;
 			try {
-				if (fs.existsSync(targetPath)) {
-					fs.unlinkSync(targetPath);
-					operationsLog.push(i18next.t('uninstall_remove_log', { file: mod.fileName }));
-				}
 				if (fs.existsSync(backupPath)) {
-					fs.renameSync(backupPath, targetPath);
+					// 還原備份檔案
+					fs.copyFileSync(backupPath, targetPath);
+					console.log(`Successfully restored original file: ${path.basename(targetPath)}`);
 					operationsLog.push(i18next.t('uninstall_restore_log', { file: path.basename(targetPath) }));
+				} else {
+					// 如果沒有備份檔案，記錄警告但繼續處理
+					console.log(`No backup found for: ${path.basename(targetPath)}, skipping restore`);
+					operationsLog.push(`No backup found for: ${mod.fileName}`);
 				}
 			} catch (err) {
 				console.error(`Failed to uninstall mod ${mod.fileName}:`, err);
@@ -591,7 +668,7 @@ app.whenReady().then(async () => {
 		const remainingMods = allMods.filter(mod => !selectedModIds.includes(mod.id));
 		store.set('mods', remainingMods);
 
-		console.log(operationsLog);
+		safeLog('Uninstall operations completed. Total operations', operationsLog.length);
 		return { success: true, message: i18next.t('operation_success'), log: operationsLog };
 	});
 	createWindow();
