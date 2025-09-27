@@ -56,5 +56,15 @@
   "uninstall_restore_log": "Restored original file: {{file}}",
   "status_crc_patching": "Patching CRC for mod: {{file}}...",
   "status_crc_success": "CRC patching successful: {{file}}",
-  "status_crc_failed": "CRC patching failed: {{file}}. Skipping."
+  "status_crc_failed": "CRC patching failed: {{file}}. Skipping.",
+  "confirm-uninstall-selected": "This will uninstall all SELECTED mods from the game. Are you sure?",
+  "no_mods_selected_for_uninstallation": "No mods selected for uninstallation. Please check the mods you want to remove.",
+  "select_all_button": "Select All Mods",
+  "action_status_no_mods_selected": "No mods selected",
+  "conflicting_mod_warning": "Warning: File {{filename}} has multiple versions, only one can be selected",
+  "uninstall_mods_confirm_message_selected": "This will uninstall all SELECTED mods from the game. Are you sure you want to continue?",
+  "duplicate_mod_detected": "Duplicate mod file detected, created new version",
+  "status_copying_file": "Copying file: {{file}}...",
+  "error_applying_mod": "Failed to apply mod {{file}}: {{error}}",
+  "conflicting_versions_found": "Found multiple versions of file {{filename}}, please select only one"
 }

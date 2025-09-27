@@ -364,10 +364,21 @@ app.whenReady().then(async () => {
 
 		for (const filePath of filePaths) {
 			const fileName = path.basename(filePath);
-			const newPath = path.join(modBundleDir, fileName);
-
-			if (currentMods.some(mod => mod.fileName === fileName)) {
-				continue;
+			let modName = fileName.replace(/\.bundle$/i, '');
+			let finalPath = path.join(modBundleDir, fileName);
+			
+			// Check if a mod with the same filename already exists
+			const existingMod = currentMods.find(mod => mod.fileName === fileName);
+			if (existingMod) {
+				// Generate a unique filename for this version
+				const fileExt = path.extname(fileName);
+				const baseName = path.basename(fileName, fileExt);
+				const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+				const newFileName = `${baseName}_v${timestamp}${fileExt}`;
+				finalPath = path.join(modBundleDir, newFileName);
+				modName = `${modName} (v${timestamp.substring(0, 16)})`;
+				
+				console.log(`Duplicate mod detected: ${fileName}. Creating new version: ${newFileName}`);
 			}
 
 			if (!fs.existsSync(filePath)) {
@@ -376,13 +387,15 @@ app.whenReady().then(async () => {
 			}
 
 			try {
-				fs.copyFileSync(filePath, newPath);
+				fs.copyFileSync(filePath, finalPath);
 				currentMods.push({
 					id: crypto.randomUUID(),
-					fileName: fileName,
-					modName: fileName.replace(/\.bundle$/i, ''),
-					enabled: true,
-					path: newPath,
+					fileName: fileName, // Keep original filename for conflict detection
+					actualFileName: path.basename(finalPath), // Store actual filename on disk
+					modName: modName,
+					enabled: false, // Disable new mods by default to avoid conflicts
+					path: finalPath,
+					installedDate: new Date().toISOString()
 				});
 			} catch (err) {
 				errors.push(`${fileName}: ${err.message}`);
@@ -500,10 +513,15 @@ app.whenReady().then(async () => {
 	});
 
 	
-	ipcMain.handle('mods:uninstall', async (event) => {
+	ipcMain.handle('mods:uninstall', async (event, selectedModIds) => {
 		const win = BrowserWindow.fromWebContents(event.sender);
 		if (!store.get('gamePath')) {
 			return { success: false, message: i18next.t('game_path_not_configured') };
+		}
+
+		// If no specific mods selected, show error
+		if (!selectedModIds || selectedModIds.length === 0) {
+			return { success: false, message: i18next.t('no_mods_selected_for_uninstall') };
 		}
 
 		const res = await dialog.showMessageBox(win, {
@@ -511,7 +529,7 @@ app.whenReady().then(async () => {
 			buttons: [i18next.t('button_cancel'), i18next.t('button_apply')],
 			defaultId: 1, 
 			title: i18next.t('uninstall_mods_confirm_title'),
-			message: i18next.t('uninstall_mods_confirm_message'),
+			message: i18next.t('uninstall_mods_confirm_message_selected'),
 			cancelId: 0,
 		});
 
@@ -519,7 +537,9 @@ app.whenReady().then(async () => {
 			return { success: false, message: i18next.t('operation_cancelled') };
 		}
 
-		const modsToUninstall = store.get('mods', []).filter(m => !m.enabled);
+		// Get only the selected mods for uninstall
+		const allMods = store.get('mods', []);
+		const modsToUninstall = allMods.filter(mod => selectedModIds.includes(mod.id));
 		let operationsLog = [];
 
 		for (const mod of modsToUninstall) {
@@ -547,6 +567,11 @@ app.whenReady().then(async () => {
 				return { success: false, message: i18next.t('operation_failed'), log: operationsLog };
 			}
 		}
+
+		// Remove uninstalled mods from store
+		const remainingMods = allMods.filter(mod => !selectedModIds.includes(mod.id));
+		store.set('mods', remainingMods);
+
 		console.log(operationsLog);
 		return { success: true, message: i18next.t('operation_success'), log: operationsLog };
 	});

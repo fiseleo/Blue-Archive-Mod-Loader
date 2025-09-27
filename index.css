@@ -82,6 +82,15 @@ button:hover {
     background-color: var(--danger-hover-color);
 }
 
+#select-all-btn {
+    background-color: #28a745;
+    margin-left: 10px;
+}
+
+#select-all-btn:hover {
+    background-color: #218838;
+}
+
 /* --- Table --- */
 table {
     width: 100%;

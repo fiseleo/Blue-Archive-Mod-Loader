@@ -56,6 +56,16 @@
   "uninstall_restore_log": "已還原原始檔案: {{file}}",
   "status_crc_patching": "正在修正 Mod 的 CRC 校驗碼: {{file}}...",
   "status_crc_success": "CRC 校驗碼修正成功: {{file}}",
-  "status_crc_failed": "CRC 校驗碼修正失敗: {{file}}。已跳過。"
+  "status_crc_failed": "CRC 校驗碼修正失敗: {{file}}。已跳過。",
+  "confirm-uninstall-selected": "這將會從遊戲中解除安裝所有「已勾選」的 Mod。您確定嗎？",
+  "no_mods_selected_for_uninstall": "沒有選取要解除安裝的 Mod。請勾選您想移除的 Mod。",
+  "select_all_button": "全選 Mod",
+  "action_status_no_mods_selected": "沒有選取任何 Mod",
+  "conflicting_mod_warning": "警告：檔案 {{filename}} 有多個版本，只能選擇一個",
+  "uninstall_mods_confirm_message_selected": "這將會從遊戲中解除安裝所有「已勾選」的 Mod。確定要繼續嗎？",
+  "duplicate_mod_detected": "偵測到重複的 Mod 檔案，已建立新版本",
+  "status_copying_file": "正在複製檔案: {{file}}...",
+  "error_applying_mod": "套用 Mod 失敗 {{file}}: {{error}}",
+  "conflicting_versions_found": "發現檔案 {{filename}} 的多個版本，請只選擇一個"
   
 }
