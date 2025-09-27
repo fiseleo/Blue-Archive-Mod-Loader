@@ -16,7 +16,9 @@ const SUPPORTED_EXTENSIONS = [
     '.jpg', 
     '.jpeg',
     '.png',
-	'.bundle'
+	'.bundle',
+	'.zip',
+	'.db'
 ];
 
 
@@ -338,11 +340,14 @@ app.whenReady().then(async () => {
 		return true;
 	});
 	ipcMain.handle('dialog:openFile', async () => {
+		// Convert SUPPORTED_EXTENSIONS to filter format (remove dots)
+		const supportedExts = SUPPORTED_EXTENSIONS.map(ext => ext.replace('.', ''));
+		
 		const { canceled, filePaths } = await dialog.showOpenDialog({
 			title: i18next.t('select_file_button'),
 			properties: ['openFile', 'multiSelections'],
 			filters: [
-				{ name: 'Mod Files', extensions: ['bundle', 'ogg', 'mp4', 'jpg', 'jpeg', 'png'] },
+				{ name: 'Mod Files', extensions: supportedExts },
 				{ name: 'All Files', extensions: ['*'] }
 			]
 		});
@@ -502,7 +507,7 @@ app.whenReady().then(async () => {
 
 			try {
 				const modExtension = path.extname(mod.fileName).toLowerCase();
-				const supportedForCrc = ['.bundle', '.ogg', 'mp4', '.jpg', '.jpeg', '.png'].includes(modExtension);
+				const supportedForCrc = SUPPORTED_EXTENSIONS.includes(modExtension);
 
 				if (supportedForCrc && crcPatcher) {
 					win.webContents.send('update-action-status', i18next.t('status_crc_patching', { file: mod.fileName }));
