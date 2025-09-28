@@ -11,76 +11,76 @@ const { exec } = require('child_process');
 
 // Set console encoding for Windows to properly display UTF-8 characters
 if (process.platform === 'win32') {
-    // Set Node.js output encoding
-    if (process.stdout && process.stdout.setDefaultEncoding) {
-        process.stdout.setDefaultEncoding('utf8');
-    }
-    if (process.stderr && process.stderr.setDefaultEncoding) {
-        process.stderr.setDefaultEncoding('utf8');
-    }
-    
-    // Set Windows console code page to UTF-8
-    try {
-        exec('chcp 65001 >nul 2>&1', (error) => {
-            if (error) {
-                console.log('Console encoding setup: Using default encoding');
-            } else {
-                console.log('Console encoding set to UTF-8');
-            }
-        });
-    } catch (error) {
-        console.log('Console encoding setup: Using default encoding');
-    }
+	// Set Node.js output encoding
+	if (process.stdout && process.stdout.setDefaultEncoding) {
+		process.stdout.setDefaultEncoding('utf8');
+	}
+	if (process.stderr && process.stderr.setDefaultEncoding) {
+		process.stderr.setDefaultEncoding('utf8');
+	}
+
+	// Set Windows console code page to UTF-8
+	try {
+		exec('chcp 65001 >nul 2>&1', (error) => {
+			if (error) {
+				console.log('Console encoding setup: Using default encoding');
+			} else {
+				console.log('Console encoding set to UTF-8');
+			}
+		});
+	} catch (error) {
+		console.log('Console encoding setup: Using default encoding');
+	}
 }
 
 const store = new Store();
 
 // Helper function to safely log to console without encoding issues
 function safeLog(message, data = '') {
-    try {
-        if (data) {
-            console.log(`${message}:`, data);
-        } else {
-            console.log(message);
-        }
-    } catch (error) {
-        // Fallback for encoding issues
-        console.log('Log output (encoding safe)');
-    }
+	try {
+		if (data) {
+			console.log(`${message}:`, data);
+		} else {
+			console.log(message);
+		}
+	} catch (error) {
+		// Fallback for encoding issues
+		console.log('Log output (encoding safe)');
+	}
 }
 
 function safeWarn(message, data = '') {
-    try {
-        if (data) {
-            console.warn(`${message}:`, data);
-        } else {
-            console.warn(message);
-        }
-    } catch (error) {
-        // Fallback for encoding issues
-        console.warn('Warning output (encoding safe)');
-    }
+	try {
+		if (data) {
+			console.warn(`${message}:`, data);
+		} else {
+			console.warn(message);
+		}
+	} catch (error) {
+		// Fallback for encoding issues
+		console.warn('Warning output (encoding safe)');
+	}
 }
 
 function safeError(message, error = null) {
-    try {
-        if (error) {
-            console.error(`${message}:`, error);
-        } else {
-            console.error(message);
-        }
-    } catch (err) {
-        // Fallback for encoding issues
-        console.error('Error output (encoding safe)');
-    }
+	try {
+		if (error) {
+			console.error(`${message}:`, error);
+		} else {
+			console.error(message);
+		}
+	} catch (err) {
+		// Fallback for encoding issues
+		console.error('Error output (encoding safe)');
+	}
 }
 
 const SUPPORTED_EXTENSIONS = [
-    '.ogg', 
-    '.mp4', 
-    '.jpg', 
-    '.jpeg',
-    '.png',
+	'.ogg',
+	'.mp4',
+	'.jpg',
+	'.jpeg',
+	'.png',
 	'.bundle',
 	'.zip',
 	'.db'
@@ -89,20 +89,20 @@ const SUPPORTED_EXTENSIONS = [
 
 let crcPatcher;
 try {
-    crcPatcher = require('./crc_patcher.js');
-    console.log('CRC Patcher module loaded successfully.');
+	crcPatcher = require('./crc_patcher.js');
+	console.log('CRC Patcher module loaded successfully.');
 } catch (e) {
-    if (e.code === 'MODULE_NOT_FOUND') {
-        console.warn('CRC Patcher module (crc_patcher.js) not found. Mods will be applied without CRC correction.');
-        crcPatcher = {
-            manipulate_crc: async () => {
-                console.warn('CRC correction skipped because patcher module is missing.');
-                return true;
-            }
-        };
-    } else {
-        throw e;
-    }
+	if (e.code === 'MODULE_NOT_FOUND') {
+		console.warn('CRC Patcher module (crc_patcher.js) not found. Mods will be applied without CRC correction.');
+		crcPatcher = {
+			manipulate_crc: async () => {
+				console.warn('CRC correction skipped because patcher module is missing.');
+				return true;
+			}
+		};
+	} else {
+		throw e;
+	}
 }
 
 
@@ -112,22 +112,22 @@ if (!fs.existsSync(modBundleDir)) {
 }
 
 async function findFileRecursively(directory, fileNameToFind) {
-    try {
-        const items = await fs.promises.readdir(directory, { withFileTypes: true });
-        for (const item of items) {
-            const fullPath = path.join(directory, item.name);
-            if (item.isDirectory()) {
-                const result = await findFileRecursively(fullPath, fileNameToFind);
-                if (result) {
-                    return result; 
-                }
-            } else if (item.name.toLowerCase() === fileNameToFind.toLowerCase()) {
-                return fullPath; 
-            }
-        }
-    } catch (err) {
-    }
-    return null; 
+	try {
+		const items = await fs.promises.readdir(directory, { withFileTypes: true });
+		for (const item of items) {
+			const fullPath = path.join(directory, item.name);
+			if (item.isDirectory()) {
+				const result = await findFileRecursively(fullPath, fileNameToFind);
+				if (result) {
+					return result;
+				}
+			} else if (item.name.toLowerCase() === fileNameToFind.toLowerCase()) {
+				return fullPath;
+			}
+		}
+	} catch (err) {
+	}
+	return null;
 }
 
 
@@ -147,7 +147,7 @@ async function findTargetFile(modFileName, win) {
 	win.webContents.send('update-action-status', i18next.t('status_searching_for_file', { file: modFileName }));
 	console.log(`Searching for file: ${modFileName} in base directory: ${searchBase}`);
 
-    const foundPath = await findFileRecursively(searchBase, modFileName);
+	const foundPath = await findFileRecursively(searchBase, modFileName);
 
 	if (foundPath) {
 		console.log(`File found: ${foundPath}`);
@@ -407,7 +407,7 @@ app.whenReady().then(async () => {
 	ipcMain.handle('dialog:openFile', async () => {
 		// Convert SUPPORTED_EXTENSIONS to filter format (remove dots)
 		const supportedExts = SUPPORTED_EXTENSIONS.map(ext => ext.replace('.', ''));
-		
+
 		const { canceled, filePaths } = await dialog.showOpenDialog({
 			title: i18next.t('select_file_button'),
 			properties: ['openFile', 'multiSelections'],
@@ -436,7 +436,7 @@ app.whenReady().then(async () => {
 			const fileName = path.basename(filePath);
 			let modName = fileName.replace(/\.bundle$/i, '');
 			let finalPath = path.join(modBundleDir, fileName);
-			
+
 			// Check if a mod with the same filename already exists
 			const existingMod = currentMods.find(mod => mod.fileName === fileName);
 			if (existingMod) {
@@ -447,7 +447,7 @@ app.whenReady().then(async () => {
 				const newFileName = `${baseName}_v${timestamp}${fileExt}`;
 				finalPath = path.join(modBundleDir, newFileName);
 				modName = `${modName} (v${timestamp.substring(0, 16)})`;
-				
+
 				console.log(`Duplicate mod detected: ${fileName}. Creating new version: ${newFileName}`);
 			}
 
@@ -488,12 +488,12 @@ app.whenReady().then(async () => {
 			}
 			return mod;
 		});
-		
+
 		// Save the updated mods if any changes were made
 		if (updatedMods.some((mod, index) => !mods[index].installedDate)) {
 			store.set('mods', updatedMods);
 		}
-		
+
 		return updatedMods;
 	});
 
@@ -537,76 +537,54 @@ app.whenReady().then(async () => {
 	ipcMain.handle('i18n:getLocale', () => app.getLocale());
 
 	// ----- '套用 Mod' 邏輯修改 -----
-	ipcMain.handle('mods:apply', async (event) => {
-		const win = BrowserWindow.fromWebContents(event.sender);
-		const mods = store.get('mods', []).filter(m => m.enabled);
+	ipcMain.handle('mods:apply', async (event, selectedModIds) => {
+		const win = BrowserWindow.getFocusedWindow();
+		const allMods = store.get('mods', []);
+		const operationsLog = [];
 
-		if (!store.get('gamePath')) {
-			return { success: false, message: i18next.t('game_path_not_configured') };
+		if (!selectedModIds || selectedModIds.length === 0) {
+			return { success: false, message: i18next.t('no_mods_selected_for_installation'), log: [] };
 		}
 
-		const res = await dialog.showMessageBox(win, {
-			type: 'warning',
-			buttons: [i18next.t('button_cancel'), i18next.t('button_apply')],
-			defaultId: 1, 
-			title: i18next.t('apply_mods_confirm_title'),
-			message: i18next.t('apply_mods_confirm_message'),
-			cancelId: 0,
-		});
+		// [Fix] 只處理選中的 Mod
+		const modsToApply = allMods.filter(mod => selectedModIds.includes(mod.id));
 
-		if (res.response === 0) {
-			return { success: false, message: i18next.t('operation_cancelled') };
-		}
+		for (const mod of modsToApply) {
+			win.webContents.send('update-action-status', i18next.t('status_applying_mod', { file: mod.fileName }));
 
-		let operationsLog = [];
+			const modPath = path.join(modBundleDir, mod.fileName);
+			if (!fs.existsSync(modPath)) {
+				operationsLog.push(`Mod file not found at: ${modPath}`);
+				continue;
+			}
 
-		for (const mod of mods) {
-			// 步驟 1: 尋找原始遊戲檔案
-			const targetFilePath = await findTargetFile(mod.fileName, win);
-			if (!targetFilePath) {
-				const logMsg = i18next.t('original_file_not_found', { file: mod.fileName });
-				operationsLog.push(logMsg);
-				safeWarn('Original file not found', mod.fileName);
+			const targetPath = await findTargetFile(mod.fileName, win);
+			if (!targetPath) {
+				operationsLog.push(`Target file not found for mod: ${mod.fileName}`);
 				continue;
 			}
 
 			try {
-				const modExtension = path.extname(mod.fileName).toLowerCase();
-				const supportedForCrc = SUPPORTED_EXTENSIONS.includes(modExtension);
-
-				// 備份原始檔案 (如果還沒有備份)
-				const backupPath = `${targetFilePath}.bak`;
+				const backupPath = `${targetPath}.bak`;
 				if (!fs.existsSync(backupPath)) {
-					fs.copyFileSync(targetFilePath, backupPath);
-					console.log(`Backup created: ${path.basename(targetFilePath)}.bak`);
+					fs.copyFileSync(targetPath, backupPath);
+					operationsLog.push(`Backup created for: ${path.basename(targetPath)}`);
 				}
 
-				if (supportedForCrc && crcPatcher) {
-					win.webContents.send('update-action-status', i18next.t('status_crc_patching', { file: mod.fileName }));
-					// CRC 修補器會先修補 mod 檔案，然後我們需要將修補後的檔案覆蓋到目標位置
-					await crcPatcher.manipulate_crc(targetFilePath, mod.path);
-					// 將修補後的 mod 檔案覆蓋到遊戲目錄
-					fs.copyFileSync(mod.path, targetFilePath);
-					console.log(`CRC patched and applied: ${mod.fileName}`);
-				} else {
-					win.webContents.send('update-action-status', i18next.t('status_copying_file', { file: mod.fileName }));
-					fs.copyFileSync(mod.path, targetFilePath);
-					console.log(`Copied ${mod.fileName} to ${targetFilePath}`);
-				}
+				fs.copyFileSync(modPath, targetPath);
+				await crcPatcher.manipulate_crc(targetPath, modPath);
+
+				operationsLog.push(`Successfully applied mod: ${mod.fileName}`);
 			} catch (err) {
-				console.error(`Error applying mod ${mod.fileName}:`, err);
-				win.webContents.send('update-action-status', i18next.t('error_applying_mod', { file: mod.fileName, error: err.message }));
-				operationsLog.push(i18next.t('error_applying_mod', { file: mod.fileName, error: err.message }));
-				continue;
+				console.error(`Failed to apply mod ${mod.fileName}:`, err);
+				operationsLog.push(`Error applying ${mod.fileName}: ${err.message}`);
 			}
-
-			operationsLog.push(i18next.t('apply_success_log', { file: mod.fileName, path: path.dirname(targetFilePath) }));
 		}
-		safeLog('Apply operations completed. Total operations', operationsLog.length);
+
 		return { success: true, message: i18next.t('operation_success'), log: operationsLog };
 	});
 
-	
+
 	ipcMain.handle('mods:uninstall', async (event, selectedModIds) => {
 		const win = BrowserWindow.fromWebContents(event.sender);
 		if (!store.get('gamePath')) {
@@ -621,7 +599,7 @@ app.whenReady().then(async () => {
 		const res = await dialog.showMessageBox(win, {
 			type: 'warning',
 			buttons: [i18next.t('button_cancel'), i18next.t('button_apply')],
-			defaultId: 1, 
+			defaultId: 1,
 			title: i18next.t('uninstall_mods_confirm_title'),
 			message: i18next.t('uninstall_mods_confirm_message_selected'),
 			cancelId: 0,
@@ -665,8 +643,8 @@ app.whenReady().then(async () => {
 		}
 
 		// Remove uninstalled mods from store
-		const remainingMods = allMods.filter(mod => !selectedModIds.includes(mod.id));
-		store.set('mods', remainingMods);
+		//const remainingMods = allMods.filter(mod => !selectedModIds.includes(mod.id));
+		//store.set('mods', remainingMods);
 
 		safeLog('Uninstall operations completed. Total operations', operationsLog.length);
 		return { success: true, message: i18next.t('operation_success'), log: operationsLog };

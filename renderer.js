@@ -4,8 +4,8 @@ async function initializeI18n() {
     const userLocale = await window.i18n.getLocale();
 
     await i18next.init({
-        lng: userLocale, 
-        fallbackLng: 'en', 
+        lng: userLocale,
+        fallbackLng: 'en',
         resources: {
             en: {
                 translation: await fetch('./locales/en/translation.json').then(res => res.json())
@@ -29,7 +29,7 @@ function updateContent() {
         const key = el.getAttribute('data-i18n');
         el.innerHTML = i18next.t(key);
     });
-    
+
     // Update theme toggle button title
     const themeToggleBtn = document.getElementById('theme-toggle-btn');
     if (themeToggleBtn) {
@@ -87,41 +87,54 @@ function detectConflictingMods(mods) {
 }
 
 // Select all mods with intelligent conflict resolution
+// renderer.js
+
 function selectAllMods() {
     const tableBody = document.getElementById('mod-table-body');
     const checkboxes = tableBody.querySelectorAll('input[type="checkbox"]');
-    const mods = Array.from(checkboxes).map(cb => ({
-        id: cb.dataset.modId,
-        fileName: cb.dataset.fileName,
-        installedDate: cb.dataset.installedDate
-    }));
+    if (checkboxes.length === 0) return;
 
-    const conflicts = detectConflictingMods(mods);
-    
-    // Uncheck all first
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = false;
-    });
+    // [Fix] 檢查是否所有 checkbox 都已被選中
+    const allSelected = Array.from(checkboxes).every(cb => cb.checked);
 
-    // For each filename, select only the latest or first one
-    Object.values(conflicts).forEach(modVersions => {
-        if (modVersions.length === 1) {
-            // Single version, select it
-            const checkbox = tableBody.querySelector(`input[data-mod-id="${modVersions[0].id}"]`);
-            if (checkbox) checkbox.checked = true;
-        } else {
-            // Multiple versions, select the latest installed or first one
-            const latestMod = modVersions.reduce((latest, current) => {
-                if (!latest.installedDate || !current.installedDate) {
-                    return latest; // If no install date, keep first
-                }
-                return new Date(current.installedDate) > new Date(latest.installedDate) ? current : latest;
-            }, modVersions[0]);
-            
-            const checkbox = tableBody.querySelector(`input[data-mod-id="${latestMod.id}"]`);
-            if (checkbox) checkbox.checked = true;
-        }
-    });
+    if (allSelected) {
+        // 如果全部都選了，就全部取消
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+    } else {
+        // 否則，執行原本的智慧選擇邏輯（處理衝突檔案）
+        const mods = Array.from(checkboxes).map(cb => ({
+            id: cb.dataset.modId,
+            fileName: cb.dataset.fileName,
+            installedDate: cb.dataset.installedDate
+        }));
+
+        const conflicts = detectConflictingMods(mods);
+
+        // 先全部取消勾選
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+
+        // 對於每個檔名，只選擇最新的一個
+        Object.values(conflicts).forEach(modVersions => {
+            if (modVersions.length === 1) {
+                const checkbox = tableBody.querySelector(`input[data-mod-id="${modVersions[0].id}"]`);
+                if (checkbox) checkbox.checked = true;
+            } else {
+                const latestMod = modVersions.reduce((latest, current) => {
+                    if (!latest.installedDate || !current.installedDate) {
+                        return latest;
+                    }
+                    return new Date(current.installedDate) > new Date(latest.installedDate) ? current : latest;
+                }, modVersions[0]);
+                
+                const checkbox = tableBody.querySelector(`input[data-mod-id="${latestMod.id}"]`);
+                if (checkbox) checkbox.checked = true;
+            }
+        });
+    }
 }
 
 
@@ -152,11 +165,20 @@ function setupEventListeners() {
         applyBtn.disabled = true;
         applyBtn.classList.add('loading');
         actionStatusElement.innerText = i18next.t('action_status_applying');
-        
         try {
-            const result = await window.api.applyMods();
-            actionStatusElement.innerText = result.message; // 顯示最終結果
-            // 5秒後清除訊息
+            
+            const tableBody = document.getElementById('mod-table-body');
+            const selectedCheckboxes = tableBody.querySelectorAll('input[type="checkbox"]:checked');
+
+            if (selectedCheckboxes.length === 0) {
+                actionStatusElement.innerText = i18next.t('action_status_no_mods_selected');
+                setTimeout(() => { actionStatusElement.innerText = ''; }, 3000);
+                return;
+            }
+            const selectedModIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.modId);
+            const result = await window.api.applyMods(selectedModIds);
+
+            actionStatusElement.innerText = result.message;
             setTimeout(() => { actionStatusElement.innerText = ''; }, 5000);
         } finally {
             applyBtn.disabled = false;
@@ -168,7 +190,7 @@ function setupEventListeners() {
         e.preventDefault();
         selectModBtn.disabled = true;
         selectModBtn.classList.add('loading');
-        
+
         try {
             const mods = await window.api.selectModFiles();
             if (mods) renderModTable(mods);
@@ -192,7 +214,7 @@ function setupEventListeners() {
         e.preventDefault();
         setGamePathBtn.disabled = true;
         setGamePathBtn.classList.add('loading');
-        
+
         try {
             const paths = await window.api.selectGamePath();
             if (paths) updateGamePathDisplay(paths);
@@ -206,7 +228,7 @@ function setupEventListeners() {
         e.preventDefault();
         const tableBody = document.getElementById('mod-table-body');
         const selectedCheckboxes = tableBody.querySelectorAll('input[type="checkbox"]:checked');
-        
+
         if (selectedCheckboxes.length === 0) {
             actionStatusElement.innerText = i18next.t('action_status_no_mods_selected');
             setTimeout(() => { actionStatusElement.innerText = ''; }, 3000);
@@ -214,19 +236,19 @@ function setupEventListeners() {
         }
 
         const selectedModIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.modId);
-        
+
         uninstallBtn.disabled = true;
         uninstallBtn.classList.add('loading');
         actionStatusElement.innerText = i18next.t('action_status_uninstalling');
-        
+
         try {
             const result = await window.api.uninstallMods(selectedModIds);
             actionStatusElement.innerText = result.message; // 顯示最終結果
-            
+
             // Refresh the mod table after uninstall
             const updatedMods = await window.api.getMods();
             renderModTable(updatedMods);
-            
+
             setTimeout(() => { actionStatusElement.innerText = ''; }, 5000);
         } finally {
             uninstallBtn.disabled = false;
@@ -239,7 +261,7 @@ function setupEventListeners() {
         launchGameBtn.disabled = true;
         launchGameBtn.classList.add('loading');
         actionStatusElement.innerText = i18next.t('action_status_launching');
-        
+
         try {
             await window.api.launchGame();
             setTimeout(() => { actionStatusElement.innerText = ''; }, 3000);
@@ -257,7 +279,7 @@ function setupEventListeners() {
     window.api.onUpdateStatus((message) => {
         statusMessageElement.innerText = message;
     });
-    
+
     // ❗️ 新增：監聽並顯示即時操作狀態
     window.api.onUpdateActionStatus((message) => {
         actionStatusElement.innerText = message;
@@ -293,7 +315,7 @@ function renderModTable(mods) {
         enabledCheckbox.dataset.modId = mod.id;
         enabledCheckbox.dataset.fileName = mod.fileName;
         enabledCheckbox.dataset.installedDate = mod.installedDate || '';
-        
+
         // Add conflict detection
         enabledCheckbox.addEventListener('change', () => {
             if (enabledCheckbox.checked && isConflicted) {
@@ -376,7 +398,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize theme before other content
     const storedTheme = getStoredTheme();
     applyTheme(storedTheme);
-    
+
     await initializeI18n();
     setupEventListeners();
 

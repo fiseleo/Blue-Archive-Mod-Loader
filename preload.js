@@ -16,7 +16,7 @@ contextBridge.exposeInMainWorld('api', {
   updateMod: (mod) => ipcRenderer.invoke('mods:update', mod),
   deleteMod: (modId) => ipcRenderer.invoke('mods:delete', modId),
 
-  applyMods: () => ipcRenderer.invoke('mods:apply'),
+  applyMods: (selectedModIds) => ipcRenderer.invoke('mods:apply', selectedModIds),
   uninstallMods: (selectedModIds) => ipcRenderer.invoke('mods:uninstall', selectedModIds),
   launchGame: () => ipcRenderer.invoke('game:launch'),
 });
