@@ -38,6 +38,7 @@ const store = new Store();
 // Initialize student index path in AppData
 const appDataPath = path.join(app.getPath('userData'), 'student-index.json');
 let studentIndex = {};
+let isAppInitializing = true;
 
 // Function to load student index
 function loadStudentIndex() {
@@ -826,6 +827,8 @@ app.whenReady().then(async () => {
 		if (BrowserWindow.getAllWindows().length === 0) {
 			createWindow();
 		}
+	} finally {
+		isAppInitializing = false;
 	}
 
 	app.on('activate', () => {
@@ -836,6 +839,9 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
+	if (isAppInitializing) {
+		return;
+	}
 	if (process.platform !== 'darwin') {
 		app.quit();
 	}
