@@ -59,11 +59,14 @@ function loadStudentIndex() {
 
 // Function to update student index on startup
 async function updateStudentIndex() {
+	let progressWin;
+	let progressClosed = Promise.resolve();
+
 	try {
 		console.log('Updating student index...');
-		
+
 		// Create progress window
-		const progressWin = new BrowserWindow({
+		progressWin = new BrowserWindow({
 			width: 400,
 			height: 200,
 			resizable: false,
@@ -74,12 +77,16 @@ async function updateStudentIndex() {
 				contextIsolation: false
 			}
 		});
-		
+
+		progressClosed = new Promise(resolve => {
+			progressWin.once('closed', resolve);
+		});
+
 		// Load progress HTML file
 		await progressWin.loadFile(path.join(__dirname, 'progress.html'));
-		
+
 		const { createStudentIndex } = require('./create-index.js');
-		
+
 		// Progress callback function
 		const progressCallback = (status, percent) => {
 			// Use executeJavaScript with try-catch to avoid errors
@@ -95,22 +102,36 @@ async function updateStudentIndex() {
 				// Ignore errors if window is closed
 			});
 		};
-		
+
 		const newIndex = await createStudentIndex(appDataPath, progressCallback);
 		studentIndex = newIndex;
-		
-		// Close progress window after a short delay
+
+		// Close progress window after a short delay and wait until it's closed
 		setTimeout(() => {
-			if (!progressWin.isDestroyed()) {
+			if (progressWin && !progressWin.isDestroyed()) {
 				progressWin.close();
 			}
-		}, 1000);
-		
+		}, 500);
+
+		await progressClosed;
+
 		console.log('Student index updated successfully.');
 	} catch (error) {
 		console.error('Failed to update student index:', error);
+		if (progressWin && !progressWin.isDestroyed()) {
+			progressWin.close();
+		}
 		// Fallback to loading existing index
 		loadStudentIndex();
+	} finally {
+		if (progressWin && !progressWin.isDestroyed()) {
+			progressWin.close();
+		}
+		try {
+			await progressClosed;
+		} catch (e) {
+			// ignore close race errors
+		}
 	}
 }
 
