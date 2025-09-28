@@ -301,8 +301,9 @@ body {
 
 /* Table column widths */
 .col-checkbox { width: 60px; }
-.col-filename { width: 200px; }
-.col-modname { width: auto; }
+.col-filename { width: 400x; }
+.col-modname { width: 450px; }
+.col-character { width: 250px; }
 .col-date { width: 140px; }
 .col-actions { width: 80px; }
 

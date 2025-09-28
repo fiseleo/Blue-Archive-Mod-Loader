@@ -22,6 +22,7 @@
   "path_not_generated": "Path could not be generated.",
   "mod_table_header_enabled": "Enabled",
   "mod_table_header_filename": "File Name",
+  "mod_table_header_character": "Character",
   "mod_table_header_modname": "Mod Name",
   "mod_table_header_installed_date": "Installation Date",
   "mod_table_header_actions": "Actions",

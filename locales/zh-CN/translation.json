@@ -23,6 +23,7 @@
   "mod_table_header_enabled": "启用",
   "mod_table_header_filename": "文件名",
   "mod_table_header_modname": "Mod 名称",
+  "mod_table_header_character": "角色",
   "mod_table_header_installed_date": "安装日期",
   "mod_table_header_actions": "操作",
   "no_mods_installed": "尚未安装任何 Mod，点击“选择 Mod 文件”以添加。",

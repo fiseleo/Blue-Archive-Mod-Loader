@@ -22,6 +22,7 @@
   "path_not_generated": "無法產生路徑。",
   "mod_table_header_enabled": "啟用",
   "mod_table_header_filename": "檔名",
+  "mod_table_header_character": "角色",
   "mod_table_header_modname": "Mod 名稱",
   "mod_table_header_installed_date": "安裝日期",
   "mod_table_header_actions": "操作",

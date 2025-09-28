@@ -35,6 +35,122 @@ if (process.platform === 'win32') {
 
 const store = new Store();
 
+// Initialize student index path in AppData
+const appDataPath = path.join(app.getPath('userData'), 'student-index.json');
+let studentIndex = {};
+
+// Function to load student index
+function loadStudentIndex() {
+	try {
+		if (fs.existsSync(appDataPath)) {
+			studentIndex = JSON.parse(fs.readFileSync(appDataPath, 'utf8'));
+			console.log('Student index loaded successfully from:', appDataPath);
+			return true;
+		} else {
+			console.warn('Student index not found. Will create new index.');
+			return false;
+		}
+	} catch (error) {
+		console.error('Failed to load student index:', error);
+		return false;
+	}
+}
+
+// Function to update student index on startup
+async function updateStudentIndex() {
+	try {
+		console.log('Updating student index...');
+		
+		// Create progress window
+		const progressWin = new BrowserWindow({
+			width: 400,
+			height: 200,
+			resizable: false,
+			alwaysOnTop: true,
+			frame: false,
+			webPreferences: {
+				nodeIntegration: true,
+				contextIsolation: false
+			}
+		});
+		
+		// Load progress HTML file
+		await progressWin.loadFile(path.join(__dirname, 'progress.html'));
+		
+		const { createStudentIndex } = require('./create-index.js');
+		
+		// Progress callback function
+		const progressCallback = (status, percent) => {
+			// Use executeJavaScript with try-catch to avoid errors
+			progressWin.webContents.executeJavaScript(`
+				try {
+					if (typeof updateProgress === 'function') {
+						updateProgress('${status.replace(/'/g, "\\'")}', ${percent});
+					}
+				} catch (e) {
+					console.log('Progress update error:', e);
+				}
+			`).catch(() => {
+				// Ignore errors if window is closed
+			});
+		};
+		
+		const newIndex = await createStudentIndex(appDataPath, progressCallback);
+		studentIndex = newIndex;
+		
+		// Close progress window after a short delay
+		setTimeout(() => {
+			if (!progressWin.isDestroyed()) {
+				progressWin.close();
+			}
+		}, 1000);
+		
+		console.log('Student index updated successfully.');
+	} catch (error) {
+		console.error('Failed to update student index:', error);
+		// Fallback to loading existing index
+		loadStudentIndex();
+	}
+}
+
+// Function to extract character info from filename
+function extractCharacterInfo(filename, locale = 'en') {
+	if (!filename) return null;
+	
+	// Look for character patterns in filename (case insensitive)
+	const lowerFilename = filename.toLowerCase();
+	
+	// First pass: Search for character codes in devName (exact matches like CH0233, CH0068, etc.)
+	for (const [devName, characterData] of Object.entries(studentIndex)) {
+		if (lowerFilename.includes(devName)) {
+			const name = characterData.names[locale] || characterData.names.en || devName;
+			return {
+				devName: characterData.devName,
+				name: name,
+				id: characterData.id
+			};
+		}
+	}
+	
+	// Second pass: Search for character names in the names field (all languages)
+	for (const [devName, characterData] of Object.entries(studentIndex)) {
+		// Check all language versions of the name
+		const allNames = Object.values(characterData.names || {});
+		for (const nameVariant of allNames) {
+			if (nameVariant && lowerFilename.includes(nameVariant.toLowerCase())) {
+				const name = characterData.names[locale] || characterData.names.en || characterData.devName;
+				return {
+					devName: characterData.devName,
+					name: name,
+					id: characterData.id
+				};
+			}
+		}
+	}
+	
+	return null;
+}
+
 // Helper function to safely log to console without encoding issues
 function safeLog(message, data = '') {
 	try {
@@ -376,280 +492,342 @@ function createWindow() {
 
 
 app.whenReady().then(async () => {
-	// 初始化 i18next
-	i18next.use(Backend).init({
-		lng: app.getLocale(),
-		fallbackLng: 'en',
-		backend: {
-			loadPath: path.join(__dirname, 'locales/{{lng}}/{{ns}}.json'),
-		},
-		ns: ['translation'],
-		defaultNS: 'translation',
-	});
-
-	await new Promise(resolve => {
-		i18next.on('initialized', resolve);
-	});
-
-	await dialog.showMessageBox({
-		type: 'warning',
-		title: i18next.t('disclaimer_title'),
-		message: i18next.t('disclaimer_message'),
-		buttons: [i18next.t('disclaimer_button')],
-		defaultId: 0
-	});
-
-	ipcMain.handle('game:launch', async () => {
-		const steamUrl = 'steam://run/3557620';
-		await shell.openExternal(steamUrl);
-		return true;
-	});
-	ipcMain.handle('dialog:openFile', async () => {
-		// Convert SUPPORTED_EXTENSIONS to filter format (remove dots)
-		const supportedExts = SUPPORTED_EXTENSIONS.map(ext => ext.replace('.', ''));
-
-		const { canceled, filePaths } = await dialog.showOpenDialog({
-			title: i18next.t('select_file_button'),
-			properties: ['openFile', 'multiSelections'],
-			filters: [
-				{ name: 'Mod Files', extensions: supportedExts },
-				{ name: 'All Files', extensions: ['*'] }
-			]
+	try {
+		// 初始化學生索引（進度條將在這裡顯示）
+		await updateStudentIndex();
+		
+		// 初始化 i18next
+		i18next.use(Backend).init({
+			lng: app.getLocale(),
+			fallbackLng: 'en',
+			backend: {
+				loadPath: path.join(__dirname, 'locales/{{lng}}/{{ns}}.json'),
+			},
+			ns: ['translation'],
+			defaultNS: 'translation',
 		});
 
-		if (canceled || filePaths.length === 0) {
-			return null;
-		}
-
-		const currentMods = store.get('mods', []);
-		const errors = [];
-
-		if (!fs.existsSync(modBundleDir)) {
-			try {
-				fs.mkdirSync(modBundleDir, { recursive: true });
-			} catch (err) {
-				return { mods: currentMods, errors: [i18next.t('modbundle_create_failed') + ': ' + err.message] };
-			}
-		}
-
-		for (const filePath of filePaths) {
-			const fileName = path.basename(filePath);
-			let modName = fileName.replace(/\.bundle$/i, '');
-			let finalPath = path.join(modBundleDir, fileName);
-
-			// Check if a mod with the same filename already exists
-			const existingMod = currentMods.find(mod => mod.fileName === fileName);
-			if (existingMod) {
-				// Generate a unique filename for this version
-				const fileExt = path.extname(fileName);
-				const baseName = path.basename(fileName, fileExt);
-				const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-				const newFileName = `${baseName}_v${timestamp}${fileExt}`;
-				finalPath = path.join(modBundleDir, newFileName);
-				modName = `${modName} (v${timestamp.substring(0, 16)})`;
-
-				console.log(`Duplicate mod detected: ${fileName}. Creating new version: ${newFileName}`);
-			}
-
-			if (!fs.existsSync(filePath)) {
-				errors.push(`${fileName}: ${i18next.t('file_not_found')}`);
-				continue;
-			}
-
-			try {
-				fs.copyFileSync(filePath, finalPath);
-				currentMods.push({
-					id: crypto.randomUUID(),
-					fileName: fileName, // Keep original filename for conflict detection
-					actualFileName: path.basename(finalPath), // Store actual filename on disk
-					modName: modName,
-					enabled: false, // Disable new mods by default to avoid conflicts
-					path: finalPath,
-					installedDate: new Date().toISOString()
-				});
-			} catch (err) {
-				errors.push(`${fileName}: ${err.message}`);
-			}
-		}
-
-		store.set('mods', currentMods);
-		if (errors.length > 0) {
-			return { mods: currentMods, errors };
-		}
-		return currentMods;
-	});
-
-	ipcMain.handle('mods:get', () => {
-		const mods = store.get('mods', []);
-		// Add installation date for existing mods that don't have it
-		const updatedMods = mods.map(mod => {
-			if (!mod.installedDate) {
-				return { ...mod, installedDate: new Date().toISOString() };
-			}
-			return mod;
+		await new Promise(resolve => {
+			i18next.on('initialized', resolve);
 		});
 
-		// Save the updated mods if any changes were made
-		if (updatedMods.some((mod, index) => !mods[index].installedDate)) {
-			store.set('mods', updatedMods);
-		}
-
-		return updatedMods;
-	});
-
-	ipcMain.handle('mods:update', (_event, updatedMod) => {
-		let mods = store.get('mods', []);
-		const modIndex = mods.findIndex(mod => mod.id === updatedMod.id);
-		if (modIndex !== -1) {
-			mods[modIndex] = { ...mods[modIndex], ...updatedMod };
-			store.set('mods', mods);
-		}
-		return mods;
-	});
-
-	ipcMain.handle('mods:delete', (_event, modId) => {
-		let mods = store.get('mods', []);
-		const modToDelete = mods.find(mod => mod.id === modId);
-		if (modToDelete) {
-			try {
-				if (fs.existsSync(modToDelete.path)) {
-					fs.unlinkSync(modToDelete.path);
-				}
-			} catch (err) {
-				console.error(`Failed to delete mod file: ${modToDelete.path}`, err);
-			}
-		}
-		const newMods = mods.filter(mod => mod.id !== modId);
-		store.set('mods', newMods);
-		return newMods;
-	});
-
-	ipcMain.handle('dialog:selectGamePath', (event) => {
-		const win = BrowserWindow.fromWebContents(event.sender);
-		return selectGamePath(win);
-	});
-	ipcMain.handle('config:getGamePath', () => {
-		return {
-			gamePath: store.get('gamePath'),
-			gameBundlePath: store.get('gameBundlePath'),
-		};
-	});
-	ipcMain.handle('i18n:getLocale', () => app.getLocale());
-
-	// ----- '套用 Mod' 邏輯修改 -----
-	ipcMain.handle('mods:apply', async (event, selectedModIds) => {
-		const win = BrowserWindow.getFocusedWindow();
-		const allMods = store.get('mods', []);
-		const operationsLog = [];
-
-		if (!selectedModIds || selectedModIds.length === 0) {
-			return { success: false, message: i18next.t('no_mods_selected_for_installation'), log: [] };
-		}
-
-		// [Fix] 只處理選中的 Mod
-		const modsToApply = allMods.filter(mod => selectedModIds.includes(mod.id));
-
-		for (const mod of modsToApply) {
-			win.webContents.send('update-action-status', i18next.t('status_applying_mod', { file: mod.fileName }));
-
-			const modPath = path.join(modBundleDir, mod.fileName);
-			if (!fs.existsSync(modPath)) {
-				operationsLog.push(`Mod file not found at: ${modPath}`);
-				continue;
-			}
-
-			const targetPath = await findTargetFile(mod.fileName, win);
-			if (!targetPath) {
-				operationsLog.push(`Target file not found for mod: ${mod.fileName}`);
-				continue;
-			}
-
-			try {
-				const backupPath = `${targetPath}.bak`;
-				if (!fs.existsSync(backupPath)) {
-					fs.copyFileSync(targetPath, backupPath);
-					operationsLog.push(`Backup created for: ${path.basename(targetPath)}`);
-				}
-
-				fs.copyFileSync(modPath, targetPath);
-				await crcPatcher.manipulate_crc(targetPath, modPath);
-
-				operationsLog.push(`Successfully applied mod: ${mod.fileName}`);
-			} catch (err) {
-				console.error(`Failed to apply mod ${mod.fileName}:`, err);
-				operationsLog.push(`Error applying ${mod.fileName}: ${err.message}`);
-			}
-		}
-
-		return { success: true, message: i18next.t('operation_success'), log: operationsLog };
-	});
-
-
-	ipcMain.handle('mods:uninstall', async (event, selectedModIds) => {
-		const win = BrowserWindow.fromWebContents(event.sender);
-		if (!store.get('gamePath')) {
-			return { success: false, message: i18next.t('game_path_not_configured') };
-		}
-
-		// If no specific mods selected, show error
-		if (!selectedModIds || selectedModIds.length === 0) {
-			return { success: false, message: i18next.t('no_mods_selected_for_uninstall') };
-		}
-
-		const res = await dialog.showMessageBox(win, {
+		// 先顯示免責聲明對話框（在學生索引更新後）
+		await dialog.showMessageBox({
 			type: 'warning',
-			buttons: [i18next.t('button_cancel'), i18next.t('button_apply')],
-			defaultId: 1,
-			title: i18next.t('uninstall_mods_confirm_title'),
-			message: i18next.t('uninstall_mods_confirm_message_selected'),
-			cancelId: 0,
+			title: i18next.t('disclaimer_title'),
+			message: i18next.t('disclaimer_message'),
+			buttons: [i18next.t('disclaimer_button')],
+			defaultId: 0
 		});
 
-		if (res.response === 0) {
-			return { success: false, message: i18next.t('operation_cancelled') };
-		}
+		// 註冊所有 IPC 處理程序
+		ipcMain.handle('game:launch', async () => {
+			const steamUrl = 'steam://run/3557620';
+			await shell.openExternal(steamUrl);
+			return true;
+		});
+		ipcMain.handle('dialog:openFile', async () => {
+			// Convert SUPPORTED_EXTENSIONS to filter format (remove dots)
+			const supportedExts = SUPPORTED_EXTENSIONS.map(ext => ext.replace('.', ''));
 
-		// Get only the selected mods for uninstall
-		const allMods = store.get('mods', []);
-		const modsToUninstall = allMods.filter(mod => selectedModIds.includes(mod.id));
-		let operationsLog = [];
+			const { canceled, filePaths } = await dialog.showOpenDialog({
+				title: i18next.t('select_file_button'),
+				properties: ['openFile', 'multiSelections'],
+				filters: [
+					{ name: 'Mod Files', extensions: supportedExts },
+					{ name: 'All Files', extensions: ['*'] }
+				]
+			});
 
-		for (const mod of modsToUninstall) {
-			const targetPath = await findTargetFile(mod.fileName, win);
-			if (!targetPath) {
-				const logMsg = i18next.t('original_file_not_found', { file: mod.fileName });
-				operationsLog.push(logMsg);
-				safeWarn('Target file not found for mod', mod.fileName);
-				continue;
+			if (canceled || filePaths.length === 0) {
+				return null;
 			}
 
-			const backupPath = `${targetPath}.bak`;
-			try {
-				if (fs.existsSync(backupPath)) {
-					// 還原備份檔案
-					fs.copyFileSync(backupPath, targetPath);
-					console.log(`Successfully restored original file: ${path.basename(targetPath)}`);
-					operationsLog.push(i18next.t('uninstall_restore_log', { file: path.basename(targetPath) }));
-				} else {
-					// 如果沒有備份檔案，記錄警告但繼續處理
-					console.log(`No backup found for: ${path.basename(targetPath)}, skipping restore`);
-					operationsLog.push(`No backup found for: ${mod.fileName}`);
+			const currentMods = store.get('mods', []);
+			const errors = [];
+
+			if (!fs.existsSync(modBundleDir)) {
+				try {
+					fs.mkdirSync(modBundleDir, { recursive: true });
+				} catch (err) {
+					return { mods: currentMods, errors: [i18next.t('modbundle_create_failed') + ': ' + err.message] };
 				}
-			} catch (err) {
-				console.error(`Failed to uninstall mod ${mod.fileName}:`, err);
-				operationsLog.push(`Error uninstalling ${mod.fileName}: ${err.message}`);
-				return { success: false, message: i18next.t('operation_failed'), log: operationsLog };
 			}
+
+			for (const filePath of filePaths) {
+				const fileName = path.basename(filePath);
+				let modName = fileName.replace(/\.bundle$/i, '');
+				let finalPath = path.join(modBundleDir, fileName);
+
+				// Check if a mod with the same filename already exists
+				const existingMod = currentMods.find(mod => mod.fileName === fileName);
+				if (existingMod) {
+					// Generate a unique filename for this version
+					const fileExt = path.extname(fileName);
+					const baseName = path.basename(fileName, fileExt);
+					const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+					const newFileName = `${baseName}_v${timestamp}${fileExt}`;
+					finalPath = path.join(modBundleDir, newFileName);
+					modName = `${modName} (v${timestamp.substring(0, 16)})`;
+
+					console.log(`Duplicate mod detected: ${fileName}. Creating new version: ${newFileName}`);
+				}
+
+				if (!fs.existsSync(filePath)) {
+					errors.push(`${fileName}: ${i18next.t('file_not_found')}`);
+					continue;
+				}
+
+				try {
+					fs.copyFileSync(filePath, finalPath);
+					
+					// Extract character info immediately for new mod
+					const currentLocale = store.get('language') || app.getLocale();
+					const localeMap = { 'zh-TW': 'tw', 'zh-CN': 'cn', 'en': 'en' };
+					const targetLocale = localeMap[currentLocale] || 'en';
+					const characterInfo = extractCharacterInfo(fileName, targetLocale);
+					
+					const newMod = {
+						id: crypto.randomUUID(),
+						fileName: fileName, // Keep original filename for conflict detection
+						actualFileName: path.basename(finalPath), // Store actual filename on disk
+						modName: modName,
+						enabled: false, // Disable new mods by default to avoid conflicts
+						path: finalPath,
+						installedDate: new Date().toISOString(),
+						character: characterInfo ? characterInfo.name : '',
+						characterId: characterInfo ? characterInfo.id : null,
+						characterDev: characterInfo ? characterInfo.devName : null,
+						lastLanguage: targetLocale
+					};
+					
+					currentMods.push(newMod);
+					console.log(`Added mod: ${fileName} -> Character: ${newMod.character || 'Unknown'}`);
+				} catch (err) {
+					errors.push(`${fileName}: ${err.message}`);
+				}
+			}
+
+			store.set('mods', currentMods);
+			if (errors.length > 0) {
+				return { mods: currentMods, errors };
+			}
+			return currentMods;
+		});
+
+		ipcMain.handle('mods:get', () => {
+			const mods = store.get('mods', []);
+			const currentLocale = store.get('language') || app.getLocale();
+			const localeMap = { 'zh-TW': 'tw', 'zh-CN': 'cn', 'en': 'en' };
+			const targetLocale = localeMap[currentLocale] || 'en';
+			
+			// Add installation date and character info for existing mods
+			const updatedMods = mods.map(mod => {
+				const updatedMod = { ...mod };
+				
+				// Add installation date if missing
+				if (!updatedMod.installedDate) {
+					updatedMod.installedDate = new Date().toISOString();
+				}
+				
+				// Add character info if not already present or if language changed
+				if (!updatedMod.character || updatedMod.lastLanguage !== targetLocale) {
+					const characterInfo = extractCharacterInfo(mod.fileName, targetLocale);
+					updatedMod.character = characterInfo ? characterInfo.name : '';
+					updatedMod.characterId = characterInfo ? characterInfo.id : null;
+					updatedMod.characterDev = characterInfo ? characterInfo.devName : null;
+					updatedMod.lastLanguage = targetLocale;
+				}
+				
+				return updatedMod;
+			});
+
+			// Save the updated mods if any changes were made
+			if (updatedMods.some((mod, index) => 
+				!mods[index].installedDate || 
+				mods[index].lastLanguage !== targetLocale ||
+				!mods[index].hasOwnProperty('character')
+			)) {
+				store.set('mods', updatedMods);
+			}
+
+			return updatedMods;
+		});
+
+		ipcMain.handle('mods:update', (_event, updatedMod) => {
+			let mods = store.get('mods', []);
+			const modIndex = mods.findIndex(mod => mod.id === updatedMod.id);
+			if (modIndex !== -1) {
+				mods[modIndex] = { ...mods[modIndex], ...updatedMod };
+				store.set('mods', mods);
+			}
+			return mods;
+		});
+
+		ipcMain.handle('mods:delete', (_event, modId) => {
+			let mods = store.get('mods', []);
+			const modToDelete = mods.find(mod => mod.id === modId);
+			if (modToDelete) {
+				try {
+					if (fs.existsSync(modToDelete.path)) {
+						fs.unlinkSync(modToDelete.path);
+					}
+				} catch (err) {
+					console.error(`Failed to delete mod file: ${modToDelete.path}`, err);
+				}
+			}
+			const newMods = mods.filter(mod => mod.id !== modId);
+			store.set('mods', newMods);
+			return newMods;
+		});
+
+		ipcMain.handle('dialog:selectGamePath', (event) => {
+			const win = BrowserWindow.fromWebContents(event.sender);
+			return selectGamePath(win);
+		});
+		ipcMain.handle('config:getGamePath', () => {
+			return {
+				gamePath: store.get('gamePath'),
+				gameBundlePath: store.get('gameBundlePath'),
+			};
+		});
+		ipcMain.handle('i18n:getLocale', () => app.getLocale());
+
+		// ----- '套用 Mod' 邏輯修改 -----
+		ipcMain.handle('mods:apply', async (event, selectedModIds) => {
+			const win = BrowserWindow.getFocusedWindow();
+			const allMods = store.get('mods', []);
+			const operationsLog = [];
+
+			if (!selectedModIds || selectedModIds.length === 0) {
+				return { success: false, message: i18next.t('no_mods_selected_for_installation'), log: [] };
+			}
+
+			// [Fix] 只處理選中的 Mod
+			const modsToApply = allMods.filter(mod => selectedModIds.includes(mod.id));
+
+			for (const mod of modsToApply) {
+				win.webContents.send('update-action-status', i18next.t('status_applying_mod', { file: mod.fileName }));
+
+				const modPath = path.join(modBundleDir, mod.fileName);
+				if (!fs.existsSync(modPath)) {
+					operationsLog.push(`Mod file not found at: ${modPath}`);
+					continue;
+				}
+
+				const targetPath = await findTargetFile(mod.fileName, win);
+				if (!targetPath) {
+					operationsLog.push(`Target file not found for mod: ${mod.fileName}`);
+					continue;
+				}
+
+				try {
+					const backupPath = `${targetPath}.bak`;
+					let originalData;
+					
+					// 如果備份不存在，創建備份（保存原始檔案）
+					if (!fs.existsSync(backupPath)) {
+						fs.copyFileSync(targetPath, backupPath);
+						operationsLog.push(`Backup created for: ${path.basename(targetPath)}`);
+						originalData = targetPath; // 使用當前的原始檔案
+					} else {
+						originalData = backupPath; // 使用已存在的備份作為原始檔案
+					}
+
+					// 先複製 mod 檔案到目標位置
+					fs.copyFileSync(modPath, targetPath);
+					
+					// 然後使用備份檔案和剛複製的檔案進行 CRC 修正
+					// manipulate_crc(original_path, modified_path)
+					await crcPatcher.manipulate_crc(originalData, targetPath);
+
+					operationsLog.push(`Successfully applied mod: ${mod.fileName}`);
+				} catch (err) {
+					console.error(`Failed to apply mod ${mod.fileName}:`, err);
+					operationsLog.push(`Error applying ${mod.fileName}: ${err.message}`);
+				}
+			}
+
+			return { success: true, message: i18next.t('operation_success'), log: operationsLog };
+		});
+
+
+		ipcMain.handle('mods:uninstall', async (event, selectedModIds) => {
+			const win = BrowserWindow.fromWebContents(event.sender);
+			if (!store.get('gamePath')) {
+				return { success: false, message: i18next.t('game_path_not_configured') };
+			}
+
+			// If no specific mods selected, show error
+			if (!selectedModIds || selectedModIds.length === 0) {
+				return { success: false, message: i18next.t('no_mods_selected_for_uninstall') };
+			}
+
+			const res = await dialog.showMessageBox(win, {
+				type: 'warning',
+				buttons: [i18next.t('button_cancel'), i18next.t('button_apply')],
+				defaultId: 1,
+				title: i18next.t('uninstall_mods_confirm_title'),
+				message: i18next.t('uninstall_mods_confirm_message_selected'),
+				cancelId: 0,
+			});
+
+			if (res.response === 0) {
+				return { success: false, message: i18next.t('operation_cancelled') };
+			}
+
+			// Get only the selected mods for uninstall
+			const allMods = store.get('mods', []);
+			const modsToUninstall = allMods.filter(mod => selectedModIds.includes(mod.id));
+			let operationsLog = [];
+
+			for (const mod of modsToUninstall) {
+				const targetPath = await findTargetFile(mod.fileName, win);
+				if (!targetPath) {
+					const logMsg = i18next.t('original_file_not_found', { file: mod.fileName });
+					operationsLog.push(logMsg);
+					safeWarn('Target file not found for mod', mod.fileName);
+					continue;
+				}
+
+				const backupPath = `${targetPath}.bak`;
+				try {
+					if (fs.existsSync(backupPath)) {
+						// 還原備份檔案
+						fs.copyFileSync(backupPath, targetPath);
+						console.log(`Successfully restored original file: ${path.basename(targetPath)}`);
+						operationsLog.push(i18next.t('uninstall_restore_log', { file: path.basename(targetPath) }));
+					} else {
+						// 如果沒有備份檔案，記錄警告但繼續處理
+						console.log(`No backup found for: ${path.basename(targetPath)}, skipping restore`);
+						operationsLog.push(`No backup found for: ${mod.fileName}`);
+					}
+				} catch (err) {
+					console.error(`Failed to uninstall mod ${mod.fileName}:`, err);
+					operationsLog.push(`Error uninstalling ${mod.fileName}: ${err.message}`);
+					return { success: false, message: i18next.t('operation_failed'), log: operationsLog };
+				}
+			}
+
+			// Remove uninstalled mods from store
+			//const remainingMods = allMods.filter(mod => !selectedModIds.includes(mod.id));
+			//store.set('mods', remainingMods);
+
+			safeLog('Uninstall operations completed. Total operations', operationsLog.length);
+			return { success: true, message: i18next.t('operation_success'), log: operationsLog };
+		});
+
+		// 建立主視窗
+		createWindow();
+
+	} catch (error) {
+		console.error('Application initialization failed:', error);
+		// 如果初始化失敗，仍然嘗試建立主視窗
+		if (BrowserWindow.getAllWindows().length === 0) {
+			createWindow();
 		}
+	}
 
-		// Remove uninstalled mods from store
-		//const remainingMods = allMods.filter(mod => !selectedModIds.includes(mod.id));
-		//store.set('mods', remainingMods);
-
-		safeLog('Uninstall operations completed. Total operations', operationsLog.length);
-		return { success: true, message: i18next.t('operation_success'), log: operationsLog };
-	});
-	createWindow();
 	app.on('activate', () => {
 		if (BrowserWindow.getAllWindows().length === 0) {
 			createWindow();

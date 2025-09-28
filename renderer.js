@@ -293,7 +293,7 @@ function renderModTable(mods) {
     if (!mods || mods.length === 0) {
         const row = tableBody.insertRow();
         const cell = row.insertCell();
-        cell.colSpan = 5; // Updated to 5 columns
+        cell.colSpan = 6; // Updated to 6 columns (added character column)
         cell.textContent = i18next.t('no_mods_installed');
         cell.style.textAlign = 'center';
         return;
@@ -339,6 +339,11 @@ function renderModTable(mods) {
             fileNameCell.className = 'conflict-filename';
             fileNameCell.title = i18next.t('conflicting_mod_warning', { filename: mod.fileName });
         }
+
+        // Character column (new)
+        const characterCell = row.insertCell();
+        characterCell.textContent = mod.character || '';
+        characterCell.className = 'character-cell';
 
         // Mod 名稱 (可編輯)
         const modNameCell = row.insertCell();

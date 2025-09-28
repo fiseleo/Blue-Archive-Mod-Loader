@@ -126,9 +126,25 @@ async function manipulate_crc(original_path, modified_path) {
         const original_crc = compute_crc32(original_data);
         const current_modified_crc = compute_crc32(modified_data);
 
+        // 詳細顯示 CRC 信息用於調試
+        console.log(`=== CRC DEBUG INFO ===`);
+        console.log(`File: ${path.basename(modified_path)}`);
+        console.log(`Original file: ${original_path}`);
+        console.log(`Modified file: ${modified_path}`);
+        console.log(`Original CRC: 0x${original_crc.toString(16).toUpperCase()} (${original_crc})`);
+        console.log(`Current Mod CRC: 0x${current_modified_crc.toString(16).toUpperCase()} (${current_modified_crc})`);
+        console.log(`Original file size: ${original_data.length} bytes`);
+        console.log(`Modified file size: ${modified_data.length} bytes`);
+        console.log(`=== END DEBUG INFO ===`);
+
         // ❗️ 新增：如果 CRC 已經相符，則跳過後續步驟
         if (current_modified_crc === original_crc) {
             console.log(`CRC for "${path.basename(modified_path)}" already matches the original. Skipping patch.`);
+            console.warn('⚠️  WARNING: This could mean:');
+            console.warn('   1. The mod file is identical to the original (no actual modifications)');
+            console.warn('   2. The game file has already been patched with this mod');
+            console.warn('   3. You may need to restore the original game file first');
+            console.warn('   4. Consider verifying your mod file is correct');
             return true;
         }
 
