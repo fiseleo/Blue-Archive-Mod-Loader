@@ -19,6 +19,17 @@ Utils.setupConsoleEncoding();
 const store = new Store();
 let isAppInitializing = true;
 
+function broadcastGamePathUpdate(paths) {
+	if (!paths) {
+		return;
+	}
+	BrowserWindow.getAllWindows()
+		.filter((window) => !window.isDestroyed())
+		.forEach((window) => {
+			window.webContents.send('update-game-path', paths);
+		});
+}
+
 // 模塊實例
 let gamePathManager;
 let studentIndexManager;
@@ -45,14 +56,14 @@ function createWindow() {
 		let gameBundlePath = store.get('gameBundlePath');
 
 		if (gamePath && fs.existsSync(gamePath)) {
-			win.webContents.send('update-game-path', { gamePath, gameBundlePath });
+			broadcastGamePathUpdate({ gamePath, gameBundlePath });
 			return;
 		}
 
 		const paths = await gamePathManager.findGameExecutable(win);
 
 		if (paths) {
-			win.webContents.send('update-game-path', paths);
+			broadcastGamePathUpdate(paths);
 		} else {
 			const { canceled, filePaths } = await dialog.showOpenDialog(win, {
 				title: i18next.t('select_game_executable'),
@@ -62,7 +73,7 @@ function createWindow() {
 			if (!canceled) {
 				const manualPaths = gamePathManager.saveGamePaths(filePaths[0]);
 				if (manualPaths) {
-					win.webContents.send('update-game-path', manualPaths);
+					broadcastGamePathUpdate(manualPaths);
 				}
 			}
 		}

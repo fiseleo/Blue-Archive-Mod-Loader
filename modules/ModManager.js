@@ -329,6 +329,10 @@ class ModManager {
         console.log('Uninstall operations completed. Total operations', operationsLog.length);
         return { success: true, message: this.i18next.t('operation_success'), log: operationsLog };
     }
+
+    getModBundleDir() {
+        return this.modBundleDir;
+    }
 }
 
 module.exports = ModManager;

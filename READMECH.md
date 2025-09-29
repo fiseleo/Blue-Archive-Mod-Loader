@@ -42,6 +42,23 @@ npm start
 - 語言檔：`locales/zh-TW/translation.json`、`locales/en/translation.json`
 - UI：`index.html`
 
+### BAMT Python 後端
+
+BAMT（BA-Modding-Toolkit）視窗會透過精簡的 Python CLI 來進行 Bundle-to-Bundle 與
+PNG 替換流程。當偵測到 Python 3.10 以上版本時，程式會自動：
+
+- 在 `%APPDATA%\blue-archive-mod-loader\.venv` 建立虛擬環境
+- 從 `BAMT/requirements.txt` 安裝必要套件（UnityPy、Pillow）
+- 透過該虛擬環境執行 `BAMT/cli.py`
+
+若要手動測試 CLI，可直接執行：
+
+```powershell
+$env:APPDATA\blue-archive-mod-loader\.venv\Scripts\python.exe BAMT\cli.py --help
+```
+
+目前 CLI 僅進行檔案替換，不包含 CRC 修正。
+
 ---
 
 如有建議或問題，歡迎提出！

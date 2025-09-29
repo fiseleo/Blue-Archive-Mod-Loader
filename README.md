@@ -40,6 +40,24 @@ npm start
 - Language files: `locales/zh-TW/translation.json`, `locales/en/translation.json`
 - UI: `index.html`
 
+### BAMT Python backend
+
+The bundled BA-Modding-Toolkit (BAMT) window uses a lightweight Python CLI to perform
+bundle-to-bundle and PNG replacement tasks. When Python 3.10+ is detected, the app automatically:
+
+- Creates a virtual environment under `%APPDATA%\blue-archive-mod-loader\.venv`
+- Installs dependencies from `BAMT/requirements.txt` (UnityPy, Pillow)
+- Executes `BAMT/cli.py` through that virtual environment
+
+You can also run the CLI manually for testing:
+
+```powershell
+$env:APPDATA\blue-archive-mod-loader\.venv\Scripts\python.exe BAMT\cli.py --help
+```
+
+Both `mod-update` and `png-replace` subcommands intentionally skip CRC correction to match the
+Electron workflow.
+
 
 
 [中文版](READMECH.md)
