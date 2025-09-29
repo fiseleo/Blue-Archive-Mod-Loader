@@ -88,6 +88,155 @@
   "apply_mods": "Apply Mods",
   "uninstall_mods": "Uninstall Mods",
   "launch_game": "Launch Game",
+  "bamt_button": "BA-Modding-Toolkit (BAMT)",
+  "bamt_window_opened": "BAMT window opened successfully",
+  "bamt_window_open_failed": "Failed to open BAMT: {{error}}",
+  "loading": "Loading...",
+  "action_status_opening_bamt": "Opening BAMT...",
   "status": "Status",
-  "actions": "Actions"
+  "actions": "Actions",
+  "bamt": {
+    "document": {
+      "title": "BA-Modding-Toolkit (BAMT)"
+    },
+    "header": {
+      "title": "BA-Modding-Toolkit",
+      "subtitle": "Electron Version",
+      "thankAuthor": "thank by Agent-0808"
+    },
+    "actions": {
+      "clearLog": "Clear Log",
+      "browse": "Browse",
+      "chooseFile": "Choose File",
+      "chooseFolder": "Choose Folder",
+      "openOutput": "Open Output Folder",
+      "preview": "Preview Selection",
+      "runModUpdate": "Start B2B Replacement",
+      "runPngReplace": "Start PNG Replacement",
+      "replaceOriginal": "Overwrite Original"
+    },
+    "status": {
+      "label": "Status: {{message}}",
+      "idle": "Idle",
+  "prerequisitesMissing": "Please complete the required inputs first",
+  "pythonMissing": "Python runtime is missing",
+  "processing": "Processing…"
+    },
+    "sharedPaths": {
+      "title": "Shared Paths",
+      "folderPlaceholder": "Drag a folder here or browse",
+      "gameResource": {
+        "label": "Game Resource Directory",
+        "hint": "BAMT will search this directory for the latest resource bundles."
+      },
+      "output": {
+        "label": "Output Directory",
+        "hint": "All generated files will be stored here. Verify before overwriting originals."
+      }
+    },
+    "options": {
+      "title": "General Options",
+      "enablePadding": "Enable padding when exporting (affects PNG & B2B flows)",
+      "createBackup": "Create a backup (.bak) before overwriting original files",
+      "replaceTexture": "Replace Texture2D assets",
+      "replaceTextasset": "Replace TextAsset resources",
+      "replaceMesh": "Replace Mesh resources"
+    },
+    "tabs": {
+      "modUpdate": "Mod Update",
+      "pngReplace": "PNG Replacement"
+    },
+    "modUpdate": {
+      "oldMod": {
+        "title": "Legacy Mod Bundle",
+        "hint": "Drag or pick an older version of the mod bundle",
+        "dropTitle": "Drop .bundle / .zip files here"
+      },
+      "target": {
+        "title": "Target Game Resource",
+        "hint": "Auto-detect the latest bundle or choose manually",
+        "autoPrefix": "Auto-detected filename prefix",
+        "autoFind": "Auto Search",
+        "dropTitle": "Drop the latest bundle here"
+      },
+      "output": {
+        "title": "Output Target",
+        "hint": "Specify the filename used when overwriting",
+        "placeholder": "Output filename (defaults to the target bundle name)"
+      }
+    },
+    "pngReplace": {
+      "bundle": {
+        "title": "Target Bundle",
+        "hint": "Drag the bundle that contains the textures to replace",
+        "dropTitle": "Drop .bundle files here"
+      },
+      "folder": {
+        "title": "PNG Folder",
+        "hint": "PNG filenames must match the asset names",
+        "dropTitle": "Drag a folder here or browse"
+      }
+    },
+    "drop": {
+      "noSelectionFile": "No file selected",
+      "noSelectionFolder": "No folder selected"
+    },
+    "log": {
+      "title": "Log Output",
+      "counter": "{{count}} lines",
+      "optionChange": "{{option}}: {{state}}",
+      "gameResourceSet": "Game resource directory set to: {{path}}",
+      "gameResourceSynced": "Game resource directory synchronized: {{path}}",
+      "gameResourceMissing": "Game resource directory is not configured. Please set the game path in the main window first.",
+      "gameResourceLoadError": "Failed to load game resource directory: {{error}}",
+      "outputDirSet": "Output directory set to: {{path}}",
+      "outputDirSynced": "Output directory synchronized: {{path}}",
+      "outputDirLoadError": "Failed to load default output directory: {{error}}",
+      "selectedOldMod": "Selected legacy mod: {{name}}",
+      "selectedTargetBundle": "Selected target bundle: {{name}}",
+      "selectedBundle": "Selected bundle: {{name}}",
+      "selectedPngFolder": "Selected PNG folder: {{name}}",
+      "modUpdatePending": "Ready to run B2B replacement (feature not yet wired)",
+      "pngReplacePending": "Ready to run PNG replacement (feature not yet wired)",
+      "replaceOriginalUnavailable": "Overwrite feature is not yet wired. Please verify manually before proceeding.",
+      "preview": "Preview settings:\n- Legacy Mod: {{oldMod}}\n- Target Bundle: {{targetBundle}}\n- Output Name: {{outputName}}\n- Options: {{options}}",
+      "autoFindUnavailable": "Auto search for newer bundles is not yet wired. Please specify manually.",
+      "openFolderError": "Error opening folder: {{error}}",
+      "openFolderSuccess": "Attempted to open folder: {{path}}",
+      "openFolderUnsupported": "This environment does not support opening folders automatically. Please open it manually.",
+      "interfaceReady": "BAMT interface is ready.",
+      "refreshModsTriggered": "Default output directory detected; requesting main window to reload mods.",
+      "refreshModsFailed": "Failed to notify main window to reload mods: {{error}}",
+      "pythonFound": "Python environment detected via '{{command}}' ({{version}})",
+      "pythonMissing": "Python runtime not found. Please install Python 3.x to use toolkit features.",
+      "pythonCheckFailed": "Failed to check Python environment: {{error}}",
+  "pythonVenvReady": "Python virtual environment is ready at: {{path}}",
+  "pythonVenvFailed": "Python virtual environment could not be prepared. Please review the logs above.",
+  "pythonUnknownVersion": "Unknown version",
+  "genericError": "An unexpected error occurred.",
+  "modUpdateStarted": "Running bundle-to-bundle replacement…",
+  "modUpdateComplete": "Bundle-to-bundle replacement finished. Replaced {{replaced}} assets (skipped {{skipped}}). Output: {{output}}",
+  "modUpdateFailed": "Bundle-to-bundle replacement failed: {{error}}",
+  "pngReplaceStarted": "Running PNG replacement…",
+  "pngReplaceComplete": "PNG replacement finished. Replaced {{replaced}} textures. Output: {{output}}",
+  "pngReplaceFailed": "PNG replacement failed: {{error}}",
+  "pngReplaceMissing": "Textures not found in bundle: {{list}}"
+    },
+    "common": {
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "notSelected": "Not selected",
+      "notConfigured": "Not configured"
+    },
+    "validation": {
+      "missing": "{{target}} is not set",
+      "folder": "Folder",
+      "oldMod": "Legacy mod file",
+      "targetBundle": "Target bundle",
+      "outputDir": "Output directory",
+      "gameResource": "Game resource directory",
+      "pngBundle": "Target bundle",
+      "pngFolder": "PNG folder"
+    }
+  }
 }

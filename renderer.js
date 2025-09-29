@@ -1,5 +1,11 @@
 // renderer.js
 
+const i18next = window.i18next;
+
+if (!i18next) {
+    throw new Error('i18next global is unavailable. Ensure i18next.min.js is loaded before renderer.js.');
+}
+
 async function initializeI18n() {
     const userLocale = await window.i18n.getLocale();
 
@@ -271,6 +277,27 @@ function setupEventListeners() {
         }
     });
 
+    // BAMT button event listener
+    const bamtBtn = document.getElementById('BAMT');
+    bamtBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        bamtBtn.disabled = true;
+        bamtBtn.classList.add(i18next.t('loading'));
+        actionStatusElement.innerText = i18next.t('action_status_opening_bamt');
+
+        try {
+            await window.api.openBAMT();
+            actionStatusElement.innerText = i18next.t('bamt_window_opened');
+            setTimeout(() => { actionStatusElement.innerText = ''; }, 3000);
+        } catch (error) {
+            actionStatusElement.innerText = i18next.t('bamt_window_open_failed', { error: error.message });
+            setTimeout(() => { actionStatusElement.innerText = ''; }, 5000);
+        } finally {
+            bamtBtn.disabled = false;
+            bamtBtn.classList.remove(i18next.t('loading'));
+        }
+    });
+
     window.api.onUpdateGamePath((paths) => {
         updateGamePathDisplay(paths);
         statusMessageElement.innerText = '';
@@ -283,6 +310,15 @@ function setupEventListeners() {
     // ❗️ 新增：監聽並顯示即時操作狀態
     window.api.onUpdateActionStatus((message) => {
         actionStatusElement.innerText = message;
+    });
+
+    window.api.onModsRefresh(async () => {
+        try {
+            const mods = await window.api.getMods();
+            renderModTable(mods);
+        } catch (error) {
+            console.error('Failed to refresh mods table:', error);
+        }
     });
 }
 
