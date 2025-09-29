@@ -35,7 +35,8 @@ const assetsToCopy = [
     'index.html',
     'index.css',
     'progress.html',
-    'locales'
+    'locales',
+    'modules'
 ];
 
 assetsToCopy.forEach(asset => {
