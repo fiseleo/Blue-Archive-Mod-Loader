@@ -17,6 +17,12 @@ const filesToObfuscate = [
     'renderer.js',
     'preload.js',
     'crc-patcher.js',
+    'create-index.js',
+    'modules/IPCHandler.js',
+    'modules/ModManager.js',
+    'modules/GamePathManager.js',
+    'modules/StudentIndexManager.js',
+    'modules/Utils.js'
 ];
 
 // 混淆選項 (可以提供很強的保護)
