@@ -118,39 +118,42 @@ function xor_bytes(a, b) {
     return result;
 }
 
-async function manipulate_crc(original_path, modified_path) {
+async function manipulate_crc(original_path, mod_path, target_path = null) {
     try {
+        // 如果只傳入兩個參數，保持舊的行為（向後兼容）
+        if (target_path === null) {
+            target_path = mod_path;
+            mod_path = mod_path;
+        }
+
         const original_data = await fs.readFile(original_path);
-        const modified_data = await fs.readFile(modified_path);
+        const mod_data = await fs.readFile(mod_path);
 
         const original_crc = compute_crc32(original_data);
-        const current_modified_crc = compute_crc32(modified_data);
+        const mod_crc = compute_crc32(mod_data);
 
         // 詳細顯示 CRC 信息用於調試
         console.log(`=== CRC DEBUG INFO ===`);
-        console.log(`File: ${path.basename(modified_path)}`);
+        console.log(`File: ${path.basename(target_path)}`);
         console.log(`Original file: ${original_path}`);
-        console.log(`Modified file: ${modified_path}`);
+        console.log(`Mod file: ${mod_path}`);
+        console.log(`Target file: ${target_path}`);
         console.log(`Original CRC: 0x${original_crc.toString(16).toUpperCase()} (${original_crc})`);
-        console.log(`Current Mod CRC: 0x${current_modified_crc.toString(16).toUpperCase()} (${current_modified_crc})`);
+        console.log(`Mod CRC: 0x${mod_crc.toString(16).toUpperCase()} (${mod_crc})`);
         console.log(`Original file size: ${original_data.length} bytes`);
-        console.log(`Modified file size: ${modified_data.length} bytes`);
+        console.log(`Mod file size: ${mod_data.length} bytes`);
         console.log(`=== END DEBUG INFO ===`);
 
-        // ❗️ 新增：如果 CRC 已經相符，則跳過後續步驟
-        if (current_modified_crc === original_crc) {
-            console.log(`CRC for "${path.basename(modified_path)}" already matches the original. Skipping patch.`);
-            console.warn('⚠️  WARNING: This could mean:');
-            console.warn('   1. The mod file is identical to the original (no actual modifications)');
-            console.warn('   2. The game file has already been patched with this mod');
-            console.warn('   3. You may need to restore the original game file first');
-            console.warn('   4. Consider verifying your mod file is correct');
+        // 如果 mod 檔案和原始檔案的 CRC 相同，則直接複製
+        if (mod_crc === original_crc) {
+            console.log(`Mod CRC matches original CRC for "${path.basename(target_path)}". Copying without patch.`);
+            await fs.writeFile(target_path, mod_data);
             return true;
         }
 
-        console.log(`CRC mismatch for "${path.basename(modified_path)}". Original: ${original_crc.toString(16)}, Mod: ${current_modified_crc.toString(16)}. Starting patch...`);
+        console.log(`CRC mismatch for "${path.basename(target_path)}". Original: ${original_crc.toString(16)}, Mod: ${mod_crc.toString(16)}. Starting patch...`);
 
-        const modified_crc_with_padding = compute_crc32(Buffer.concat([modified_data, Buffer.alloc(4)]));
+        const modified_crc_with_padding = compute_crc32(Buffer.concat([mod_data, Buffer.alloc(4)]));
 
         const original_bytes = u32_to_bytes_be(original_crc);
         const modified_bytes = u32_to_bytes_be(modified_crc_with_padding);
@@ -166,20 +169,20 @@ async function manipulate_crc(original_path, modified_path) {
         const reverse_byte_bits = (byte) => parseInt(byte.toString(2).padStart(8, '0').split('').reverse().join(''), 2);
         const correction_bytes = Buffer.from([...correction_bytes_raw].map(b => reverse_byte_bits(b)));
 
-        const final_data = Buffer.concat([modified_data, correction_bytes]);
+        const final_data = Buffer.concat([mod_data, correction_bytes]);
         const final_crc = compute_crc32(final_data);
 
         if (final_crc === original_crc) {
-            // 重要：用修正後的數據【覆蓋】Mod檔案
-            await fs.writeFile(modified_path, final_data);
-            console.log(`Successfully patched CRC for "${path.basename(modified_path)}". New CRC: ${final_crc.toString(16)}`);
+            // 將修正後的數據寫入目標路徑
+            await fs.writeFile(target_path, final_data);
+            console.log(`Successfully patched CRC for "${path.basename(target_path)}". New CRC: ${final_crc.toString(16)}`);
             return true;
         }
 
-        console.warn(`CRC patching FAILED for "${path.basename(modified_path)}". Final CRC (${final_crc.toString(16)}) did not match original CRC (${original_crc.toString(16)}).`);
+        console.warn(`CRC patching FAILED for "${path.basename(target_path)}". Final CRC (${final_crc.toString(16)}) did not match original CRC (${original_crc.toString(16)}).`);
         return false;
     } catch (err) {
-        console.error(`CRC manipulation process failed for ${modified_path}:`, err);
+        console.error(`CRC manipulation process failed for ${target_path}:`, err);
         return false;
     }
 }
