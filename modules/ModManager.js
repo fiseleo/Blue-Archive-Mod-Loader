@@ -141,6 +141,82 @@ class ModManager {
         const currentLocale = this.store.get('language') || this.app.getLocale();
         const localeMap = { 'zh-TW': 'tw', 'zh-CN': 'cn', 'en': 'en' };
         const targetLocale = localeMap[currentLocale] || 'en';
+        const supportedExts = new Set(this.SUPPORTED_EXTENSIONS.map((ext) => ext.toLowerCase()));
+        const resolveStoredPath = (mod) => {
+            const directPath = mod.path;
+            if (directPath) {
+                return path.normalize(directPath);
+            }
+            const actual = mod.actualFileName;
+            if (actual) {
+                return path.normalize(path.join(this.modBundleDir, actual));
+            }
+            if (mod.fileName) {
+                return path.normalize(path.join(this.modBundleDir, mod.fileName));
+            }
+            return null;
+        };
+        const knownPaths = new Set();
+        mods.forEach((mod) => {
+            try {
+                const normalized = resolveStoredPath(mod);
+                if (normalized) {
+                    knownPaths.add(normalized);
+                }
+            } catch (error) {
+                console.warn('Failed to normalize stored mod path:', error);
+            }
+        });
+        let insertedNewFile = false;
+        try {
+            const entries = fs.readdirSync(this.modBundleDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isFile()) {
+                    continue;
+                }
+                const ext = path.extname(entry.name).toLowerCase();
+                if (!supportedExts.has(ext)) {
+                    continue;
+                }
+                const absolutePath = path.join(this.modBundleDir, entry.name);
+                let normalizedPath;
+                try {
+                    normalizedPath = path.normalize(absolutePath);
+                } catch (error) {
+                    console.warn('Failed to normalize discovered mod path:', error);
+                    continue;
+                }
+                if (knownPaths.has(normalizedPath)) {
+                    continue;
+                }
+                let installedDate;
+                try {
+                    const stats = fs.statSync(absolutePath);
+                    installedDate = stats.mtime.toISOString();
+                } catch (error) {
+                    installedDate = new Date().toISOString();
+                }
+                const baseName = path.basename(entry.name, ext);
+                const characterInfo = studentIndexManager.extractCharacterInfo(entry.name, targetLocale);
+                mods.push({
+                    id: crypto.randomUUID(),
+                    fileName: entry.name,
+                    actualFileName: entry.name,
+                    modName: baseName,
+                    enabled: false,
+                    path: absolutePath,
+                    installedDate,
+                    character: characterInfo ? characterInfo.name : '',
+                    characterId: characterInfo ? characterInfo.id : null,
+                    characterDev: characterInfo ? characterInfo.devName : null,
+                    lastLanguage: targetLocale,
+                });
+                knownPaths.add(normalizedPath);
+                insertedNewFile = true;
+            }
+        } catch (error) {
+            console.warn('Failed to scan ModBundle directory for new mods:', error);
+        }
         
         // 為現有 Mod 添加安裝日期和角色資訊
         const updatedMods = mods.map(mod => {
@@ -164,11 +240,12 @@ class ModManager {
         });
 
         // 如果有任何變更，保存更新的 Mod
-        if (updatedMods.some((mod, index) => 
+        const requiresUpdate = insertedNewFile || updatedMods.some((mod, index) => 
             !mods[index].installedDate || 
             mods[index].lastLanguage !== targetLocale ||
             !mods[index].hasOwnProperty('character')
-        )) {
+        );
+        if (requiresUpdate) {
             this.store.set('mods', updatedMods);
         }
 

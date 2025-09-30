@@ -117,7 +117,7 @@ class IPCHandler {
             };
             try {
                 const args = this.buildModUpdateArgs(payload);
-                const result = await this.pythonManager.runCli('mod-update', args, forwardLog);
+                const result = await this.pythonManager.runCli('update', args, forwardLog);
                 return { ok: true, result };
             } catch (error) {
                 forwardLog({ level: 'error', message: error.message || String(error) });
@@ -135,7 +135,7 @@ class IPCHandler {
             };
             try {
                 const args = this.buildPngReplaceArgs(payload);
-                const result = await this.pythonManager.runCli('png-replace', args, forwardLog);
+                const result = await this.pythonManager.runCli('replace-png', args, forwardLog);
                 return { ok: true, result };
             } catch (error) {
                 forwardLog({ level: 'error', message: error.message || String(error) });
@@ -177,7 +177,6 @@ class IPCHandler {
                     contextIsolation: false
                 },
                 title: 'BA-Modding-Toolkit (BAMT)',
-                icon: path.join(__dirname, '..', 'image.png'), // 使用主應用的圖標
                 show: false // 先隱藏，載入完成後再顯示
             });
 
@@ -219,24 +218,26 @@ class IPCHandler {
             '--new-bundle', payload.newBundle,
             '--output-dir', payload.outputDir,
         ];
-        if (payload.outputName) {
-            args.push('--output-name', payload.outputName);
-        }
-        if (payload.enablePadding) {
-            args.push('--enable-padding');
-        }
-        if (payload.createBackup) {
-            args.push('--create-backup');
-        }
+        
+        // 根據選項構建 asset-types 列表
+        const assetTypes = [];
         if (payload.replaceTexture) {
-            args.push('--replace-texture');
+            assetTypes.push('Texture2D');
         }
         if (payload.replaceTextasset) {
-            args.push('--replace-textasset');
+            assetTypes.push('TextAsset');
         }
         if (payload.replaceMesh) {
-            args.push('--replace-mesh');
+            assetTypes.push('Mesh');
         }
+        
+        // 如果沒有選擇任何資源類型，默認使用 Texture2D
+        if (assetTypes.length === 0) {
+            assetTypes.push('Texture2D');
+        }
+        
+        args.push('--asset-types', ...assetTypes);
+        
         return args;
     }
 
@@ -246,12 +247,9 @@ class IPCHandler {
         }
         const args = [
             '--bundle', payload.bundle,
-            '--png-folder', payload.pngFolder,
+            '--image-folder', payload.pngFolder,
             '--output-dir', payload.outputDir,
         ];
-        if (payload.enablePadding) {
-            args.push('--enable-padding');
-        }
         return args;
     }
 }

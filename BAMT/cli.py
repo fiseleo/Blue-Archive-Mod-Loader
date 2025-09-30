@@ -1,291 +1,188 @@
-#!/usr/bin/env python3
-"""Command-line toolkit backing the BAMT Electron UI.
-
-This script intentionally mirrors a subset of the legacy Tkinter application
-but removes CRC correction logic. It exposes two subcommands:
-
-- mod-update: Perform bundle-to-bundle replacement between an older mod bundle
-  and a newer game bundle.
-- png-replace: Replace Texture2D assets inside a bundle using PNG files.
-
-Output uses simple line-based logging followed by a single JSON result line so
-that the Electron renderer can parse structured data reliably.
-"""
-
-from __future__ import annotations
-
+# cli.py
 import argparse
-import json
-import shutil
+import os
 import sys
 from pathlib import Path
-from typing import Dict, Iterable, Optional, Tuple
+import logging
 
-import UnityPy
-from PIL import Image
+# 将项目根目录添加到 sys.path，以便可以导入 processing 和 utils
+sys.path.append(str(Path(__file__).parent.absolute()))
 
-LOG_PREFIX = "LOG:"
-RESULT_PREFIX = "RESULT:"
+try:
+    import processing
+    from utils import Logger
+except ImportError as e:
+    print(f"错误: 无法导入必要的模块: {e}")
+    print("请确保 'processing.py' 和 'utils.py' 文件与此脚本位于同一目录中。")
+    sys.exit(1)
 
+# --- 日志设置 ---
+# 创建一个简单的控制台日志记录器，代替GUI中的Logger
+def setup_cli_logger():
+    """配置一个简单的日志记录器，将日志输出到控制台。"""
+    log = logging.getLogger('cli')
+    if not log.handlers:
+        log.setLevel(logging.INFO)
+        handler = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter('%(message)s')
+        handler.setFormatter(formatter)
+        log.addHandler(handler)
+    
+    # 模拟GUI Logger的接口
+    class CLILogger:
+        def log(self, message):
+            log.info(message)
+        def status(self, message):
+            log.info(f"状态: {message}")
+        def clear(self):
+            # 在CLI中，我们通常不清除屏幕，所以这个方法什么都不做
+            pass
+            
+    return CLILogger()
 
-def log(message: str, level: str = "info") -> None:
-    """Emit a line-oriented log entry."""
-    print(f"{LOG_PREFIX}{level}:{message}", flush=True)
+# --- 命令处理函数 ---
 
+def handle_update(args, logger):
+    """处理 'update' 命令的逻辑。"""
+    logger.log("--- 开始一键更新 Mod (CLI) ---")
 
-def emit_result(data: Dict[str, object]) -> None:
-    print(f"{RESULT_PREFIX}{json.dumps(data, ensure_ascii=False)}", flush=True)
-
-
-def ensure_exists(path: Path, kind: str) -> Path:
-    if not path.exists():
-        raise FileNotFoundError(f"{kind} does not exist: {path}")
-    return path
-
-
-def save_environment(env: UnityPy.Environment, output_path: Path, enable_padding: bool) -> None:
-    padding = 16 if enable_padding else 0
-    with output_path.open("wb") as f:
-        f.write(env.file.save(padding=padding))
-
-
-def create_backup_if_needed(target_path: Path, enable_backup: bool) -> Optional[Path]:
-    if not enable_backup or not target_path.exists():
-        return None
-    backup_path = target_path.with_suffix(target_path.suffix + ".bak")
-    shutil.copy2(target_path, backup_path)
-    return backup_path
-
-
-def gather_texture_sources(env: UnityPy.Environment, allowed_types: Iterable[str]) -> Dict[Tuple[str, str], object]:
-    sources: Dict[Tuple[str, str], object] = {}
-    for obj in env.objects:
-        if obj.type.name not in allowed_types:
-            continue
-        data = obj.read()
-        key = (obj.type.name, getattr(data, "name", getattr(data, "m_Name", "")))
-        if not key[1]:
-            continue
-        sources[key] = data
-    return sources
-
-
-def apply_texture2d_replacement(target, source) -> None:
-    # Texture2D supports replacing via PIL image.
-    try:
-        target.set_image(source.image)
-    except Exception:
-        # Fallback: copy raw image data attributes.
-        target.image_data = source.image_data
-        target.mip_count = getattr(source, "mip_count", target.mip_count)
-        target.m_Width = getattr(source, "m_Width", target.m_Width)
-        target.m_Height = getattr(source, "m_Height", target.m_Height)
-
-
-def apply_textasset_replacement(target, source) -> None:
-    target.script = source.script
-
-
-def apply_mesh_replacement(target, source) -> None:
-    # Mesh replacement is straightforward because UnityPy copies the data tree.
-    target.m_VertexData = source.m_VertexData
-    target.m_IndexBuffer = source.m_IndexBuffer
-    target.m_SubMeshes = source.m_SubMeshes
-    target.m_BindPose = source.m_BindPose
-
-
-def perform_mod_update(
-    old_mod: Path,
-    new_bundle: Path,
-    output_dir: Path,
-    output_name: Optional[str],
-    enable_padding: bool,
-    enable_backup: bool,
-    replace_texture: bool,
-    replace_textasset: bool,
-    replace_mesh: bool,
-) -> Dict[str, object]:
-    ensure_exists(old_mod, "Old mod bundle")
-    ensure_exists(new_bundle, "Target bundle")
+    old_mod_path = Path(args.old_mod)
+    output_dir = Path(args.output_dir)
+    
+    # 确保输出目录存在
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    asset_types = set()
-    if replace_texture:
-        asset_types.add("Texture2D")
-    if replace_textasset:
-        asset_types.add("TextAsset")
-    if replace_mesh:
-        asset_types.add("Mesh")
+    new_bundle_path = None
+    if args.new_bundle:
+        new_bundle_path = Path(args.new_bundle)
+    elif args.game_dir:
+        logger.log(f"未提供新版资源文件，将在 '{args.game_dir}' 中自动搜索...")
+        game_dir = Path(args.game_dir)
+        if not game_dir.is_dir():
+            logger.log(f"❌ 错误: 游戏资源目录 '{game_dir}' 不存在或不是一个目录。")
+            return
+        
+        found_path, message = processing.find_new_bundle_path(old_mod_path, game_dir, logger.log)
+        if not found_path:
+            logger.log(f"❌ 自动搜索失败: {message}")
+            return
+        new_bundle_path = found_path
+    
+    if not new_bundle_path:
+        logger.log("❌ 错误: 必须提供 '--new-bundle' 或 '--game-dir' 以确定目标资源文件。")
+        return
 
-    if not asset_types:
-        raise ValueError("No asset replacement types were enabled.")
+    asset_types = set(args.asset_types)
+    logger.log(f"指定的资源替换类型: {', '.join(asset_types)}")
 
-    log("Loading legacy mod bundle...", "info")
-    old_env = UnityPy.load(str(old_mod))
-    sources = gather_texture_sources(old_env, asset_types)
-    if not sources:
-        raise RuntimeError("No matching assets were found inside the legacy mod bundle.")
-    log(f"Collected {len(sources)} candidate assets for replacement.")
+    # 调用核心处理函数
+    success, message = processing.process_mod_update(
+        old_mod_path=old_mod_path,
+        new_bundle_path=new_bundle_path,
+        working_dir=output_dir,
+        log=logger.log,
+        asset_types_to_replace=asset_types
+    )
 
-    log("Loading target bundle...", "info")
-    new_env = UnityPy.load(str(new_bundle))
-
-    replaced = 0
-    skipped = 0
-
-    for obj in new_env.objects:
-        if obj.type.name not in asset_types:
-            continue
-        data = obj.read()
-        key = (obj.type.name, getattr(data, "name", getattr(data, "m_Name", "")))
-        if key not in sources:
-            skipped += 1
-            continue
-        source_data = sources[key]
-        if obj.type.name == "Texture2D":
-            apply_texture2d_replacement(data, source_data)
-        elif obj.type.name == "TextAsset":
-            apply_textasset_replacement(data, source_data)
-        elif obj.type.name == "Mesh":
-            apply_mesh_replacement(data, source_data)
-        replaced += 1
-
-    log(f"Replaced {replaced} assets; skipped {skipped}.")
-
-    if replaced == 0:
-        raise RuntimeError("No assets were replaced. Ensure the selected bundles share asset names.")
-
-    output_name = output_name or new_bundle.name
-    output_path = output_dir / output_name
-
-    backup_path = create_backup_if_needed(output_path, enable_backup)
-    if backup_path:
-        log(f"Backup saved to {backup_path}")
-
-    log(f"Saving updated bundle to {output_path} (padding={'on' if enable_padding else 'off'})")
-    save_environment(new_env, output_path, enable_padding)
-
-    return {
-        "status": "success",
-        "replaced": replaced,
-        "skipped": skipped,
-        "output": str(output_path),
-    }
+    logger.log("\n" + "="*50)
+    if success:
+        logger.log(f"✅ 操作成功: {message}")
+    else:
+        logger.log(f"❌ 操作失败: {message}")
 
 
-def perform_png_replace(
-    bundle_path: Path,
-    image_folder: Path,
-    output_dir: Path,
-    enable_padding: bool,
-) -> Dict[str, object]:
-    ensure_exists(bundle_path, "Target bundle")
-    ensure_exists(image_folder, "PNG folder")
+def handle_replace_png(args, logger):
+    """处理 'replace-png' 命令的逻辑。"""
+    logger.log("--- 开始 PNG 替换 (CLI) ---")
+    
+    bundle_path = Path(args.bundle)
+    image_folder = Path(args.image_folder)
+    output_dir = Path(args.output_dir)
+
+    # 确保输出目录存在
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    image_map: Dict[str, Path] = {}
-    for png in image_folder.glob("*.png"):
-        image_map[png.stem] = png
+    if not bundle_path.is_file():
+        logger.log(f"❌ 错误: Bundle 文件 '{bundle_path}' 不存在。")
+        return
+    if not image_folder.is_dir():
+        logger.log(f"❌ 错误: 图片文件夹 '{image_folder}' 不存在。")
+        return
 
-    if not image_map:
-        raise RuntimeError("The PNG folder does not contain any .png files.")
+    # 调用核心处理函数
+    success, message = processing.process_png_replacement(
+        target_bundle_path=bundle_path,
+        image_folder=image_folder,
+        working_dir=output_dir,
+        log=logger.log
+    )
 
-    log(f"Preparing to replace up to {len(image_map)} textures from {bundle_path.name}")
-
-    env = UnityPy.load(str(bundle_path))
-    replaced = 0
-    seen_names = set()
-
-    for obj in env.objects:
-        if obj.type.name != "Texture2D":
-            continue
-        data = obj.read()
-        key = getattr(data, "name", getattr(data, "m_Name", ""))
-        if key:
-            seen_names.add(key)
-        image_path = image_map.get(key)
-        if not image_path:
-            continue
-        with Image.open(image_path) as img:
-            data.set_image(img.convert("RGBA"))
-        replaced += 1
-
-    missing = sorted(set(image_map.keys()) - seen_names)
-
-    if replaced == 0:
-        raise RuntimeError("No textures were replaced. Check filename casing and bundle contents.")
-
-    log(f"Successfully replaced {replaced} textures.")
-    if missing:
-        log("Textures not found in bundle: " + ", ".join(missing), "warning")
-
-    output_path = output_dir / bundle_path.name
-    log(f"Saving updated bundle to {output_path} (padding={'on' if enable_padding else 'off'})")
-    save_environment(env, output_path, enable_padding)
-
-    return {
-        "status": "success",
-        "replaced": replaced,
-        "missing": missing,
-        "output": str(output_path),
-    }
+    logger.log("\n" + "="*50)
+    if success:
+        logger.log(f"✅ 操作成功: {message}")
+    else:
+        logger.log(f"❌ 操作失败: {message}")
 
 
-def parse_arguments(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="BA-Modding-Toolkit CLI (no CRC)")
-    subparsers = parser.add_subparsers(dest="command", required=True)
+def main():
+    """主函数，用于解析命令行参数并分派任务。"""
+    parser = argparse.ArgumentParser(
+        description="BA Modding Toolkit - Command Line Interface.",
+        formatter_class=argparse.RawTextHelpFormatter
+    )
+    subparsers = parser.add_subparsers(dest='command', required=True, help='可用的命令')
 
-    mod_update = subparsers.add_parser("mod-update", help="Run bundle-to-bundle replacement")
-    mod_update.add_argument("--old-mod", required=True, type=Path)
-    mod_update.add_argument("--new-bundle", required=True, type=Path)
-    mod_update.add_argument("--output-dir", required=True, type=Path)
-    mod_update.add_argument("--output-name", type=str, default=None)
-    mod_update.add_argument("--enable-padding", action="store_true")
-    mod_update.add_argument("--create-backup", action="store_true")
-    mod_update.add_argument("--replace-texture", action="store_true", default=False)
-    mod_update.add_argument("--replace-textasset", action="store_true", default=False)
-    mod_update.add_argument("--replace-mesh", action="store_true", default=False)
+    # --- 'update' 命令 ---
+    update_parser = subparsers.add_parser(
+        'update', 
+        help='一键更新 Mod，将旧 Mod 的资源移植到新版游戏文件中。',
+        description='''
+示例:
+  # 自动搜索新文件并更新
+  python maincli.py update --old-mod "C:\\path\\to\\old_mod.bundle" --game-dir "C:\\path\\to\\game_data" --output-dir "C:\\path\\to\\output"
 
-    png_replace = subparsers.add_parser("png-replace", help="Replace textures using PNG files")
-    png_replace.add_argument("--bundle", required=True, type=Path)
-    png_replace.add_argument("--png-folder", required=True, type=Path)
-    png_replace.add_argument("--output-dir", required=True, type=Path)
-    png_replace.add_argument("--enable-padding", action="store_true")
+  # 手动指定新文件并更新
+  python maincli.py update --old-mod "C:\\path\\to\\old_mod.bundle" --new-bundle "C:\\path\\to\\new_game_file.bundle" --output-dir "C:\\path\\to\\output"
 
-    return parser.parse_args(argv)
+  # 指定替换多种资源
+  python maincli.py update --old-mod "..." --new-bundle "..." --output-dir "..." --asset-types Texture2D TextAsset
+'''
+    )
+    update_parser.add_argument('--old-mod', required=True, help='旧版 Mod bundle 文件的路径。')
+    update_parser.add_argument('--new-bundle', help='新版游戏资源 bundle 文件的路径 (如果提供，则优先于 --game-dir)。')
+    update_parser.add_argument('--game-dir', help='游戏资源目录的路径，用于自动查找匹配的新版 bundle 文件。')
+    update_parser.add_argument('--output-dir', required=True, help='保存生成的新 Mod 文件的目录。')
+    update_parser.add_argument(
+        '--asset-types', 
+        nargs='+', 
+        default=['Texture2D'], 
+        choices=['Texture2D', 'TextAsset', 'Mesh'],
+        help='要替换的资源类型列表 (默认为: Texture2D)。'
+    )
 
+    # --- 'replace-png' 命令 ---
+    replace_parser = subparsers.add_parser(
+        'replace-png', 
+        help='将 PNG 图片文件夹中的内容替换到目标 bundle 文件中。',
+        description='''
+示例:
+  python maincli.py replace-png --bundle "C:\\path\\to\\target.bundle" --image-folder "C:\\path\\to\\images" --output-dir "C:\\path\\to\\output"
+'''
+    )
+    replace_parser.add_argument('--bundle', required=True, help='要修改的目标 bundle 文件路径。')
+    replace_parser.add_argument('--image-folder', required=True, help='包含 .png 图片的文件夹路径。图片文件名 (不含扩展名) 需与 bundle 内资源名匹配。')
+    replace_parser.add_argument('--output-dir', required=True, help='保存修改后 bundle 文件的目录。')
 
-def main(argv: Optional[Iterable[str]] = None) -> int:
-    try:
-        args = parse_arguments(argv)
-        if args.command == "mod-update":
-            result = perform_mod_update(
-                old_mod=args.old_mod,
-                new_bundle=args.new_bundle,
-                output_dir=args.output_dir,
-                output_name=args.output_name,
-                enable_padding=args.enable_padding,
-                enable_backup=args.create_backup,
-                replace_texture=args.replace_texture,
-                replace_textasset=args.replace_textasset,
-                replace_mesh=args.replace_mesh,
-            )
-        elif args.command == "png-replace":
-            result = perform_png_replace(
-                bundle_path=args.bundle,
-                image_folder=args.png_folder,
-                output_dir=args.output_dir,
-                enable_padding=args.enable_padding,
-            )
-        else:
-            raise ValueError(f"Unknown command: {args.command}")
-        emit_result(result)
-        return 0
-    except Exception as exc:  # pylint: disable=broad-except
-        log(f"Error: {exc}", "error")
-        emit_result({"status": "error", "message": str(exc)})
-        return 1
+    args = parser.parse_args()
+    
+    # 初始化日志记录器
+    logger = setup_cli_logger()
 
+    # 根据命令调用相应的处理函数
+    if args.command == 'update':
+        handle_update(args, logger)
+    elif args.command == 'replace-png':
+        handle_replace_png(args, logger)
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
