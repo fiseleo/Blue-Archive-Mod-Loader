@@ -39,6 +39,9 @@
     "files": [
       "**/*"
     ],
+    "asarUnpack": [
+      "BAMT/**"
+    ],
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
