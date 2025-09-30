@@ -71,7 +71,12 @@ filesToObfuscate.forEach(fileName => {
     const obfuscationResult = JavaScriptObfuscator.obfuscate(sourceCode, obfuscatorOptions);
     
     const obfuscatedCode = obfuscationResult.getObfuscatedCode();
-    fs.writeFileSync(path.join(distDir, fileName), obfuscatedCode);
+    const outputPath = path.join(distDir, fileName);
+    const outputDir = path.dirname(outputPath);
+    if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+    }
+    fs.writeFileSync(outputPath, obfuscatedCode);
     console.log(`Successfully obfuscated: ${fileName}`);
 });
 
