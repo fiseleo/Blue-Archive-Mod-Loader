@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('api', {
   // ❗️ 新增：監聽操作狀態的即時更新
   onUpdateActionStatus: (callback) => ipcRenderer.on('update-action-status', (_event, value) => callback(value)),
 
+  onModsRefresh: (callback) => ipcRenderer.on('mods:refresh', () => callback()),
+
   // Mod 檔案相關
   selectModFiles: () => ipcRenderer.invoke('dialog:openFile'),
   getMods: () => ipcRenderer.invoke('mods:get'),
@@ -19,9 +21,13 @@ contextBridge.exposeInMainWorld('api', {
   applyMods: (selectedModIds) => ipcRenderer.invoke('mods:apply', selectedModIds),
   uninstallMods: (selectedModIds) => ipcRenderer.invoke('mods:uninstall', selectedModIds),
   launchGame: () => ipcRenderer.invoke('game:launch'),
+  
+  // BAMT 相關
+  openBAMT: () => ipcRenderer.invoke('bamt:open'),
 });
 contextBridge.exposeInMainWorld('config', {
-  getGamePath: () => ipcRenderer.invoke('config:getGamePath')
+  getGamePath: () => ipcRenderer.invoke('config:getGamePath'),
+  getDefaultOutputDir: () => ipcRenderer.invoke('config:getDefaultOutputDir')
 });
 
 contextBridge.exposeInMainWorld('i18n', {

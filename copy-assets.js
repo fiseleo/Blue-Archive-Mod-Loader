@@ -34,7 +34,9 @@ console.log('Generated clean package.json for dist.');
 const assetsToCopy = [
     'index.html',
     'index.css',
-    'locales'
+    'progress.html',
+    'locales',
+    'modules'
 ];
 
 assetsToCopy.forEach(asset => {

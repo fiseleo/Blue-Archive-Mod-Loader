@@ -359,6 +359,7 @@ body {
     color: white;
 }
 
+
 .btn-success:hover:not(:disabled) {
     background: var(--success-hover-color);
     transform: translateY(-1px);

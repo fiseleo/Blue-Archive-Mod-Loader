@@ -88,7 +88,169 @@
   "apply_mods": "套用 Mods",
   "uninstall_mods": "移除 Mods",
   "launch_game": "啟動遊戲",
+  "bamt_button": "BA-Modding-Toolkit (BAMT)",
+  "bamt_window_opened": "BAMT 視窗已成功開啟",
+  "bamt_window_open_failed": "開啟 BAMT 失敗: {{error}}",
+  "loading": "加載中...",
+  "action_status_opening_bamt": "正在開啟 BAMT...",
   "status": "狀態",
-  "actions": "操作"
-  
+  "actions": "操作",
+  "bamt": {
+    "document": {
+      "title": "BA-Modding-Toolkit (BAMT)"
+    },
+    "header": {
+      "title": "BA-Modding-Toolkit",
+      "subtitle": "Electron Version",
+      "thankAuthor": "thank by Agent-0808"
+    },
+    "actions": {
+      "clearLog": "清除日誌",
+      "browse": "瀏覽",
+      "chooseFile": "選擇檔案",
+      "chooseFolder": "選擇資料夾",
+      "openOutput": "開啟輸出資料夾",
+      "preview": "檢視選擇",
+      "runModUpdate": "開始 B2B 替換",
+      "runPngReplace": "開始 PNG 替換",
+      "replaceOriginal": "覆寫原始檔"
+    },
+    "status": {
+      "label": "狀態：{{message}}",
+      "idle": "待命",
+      "prerequisitesMissing": "請先完成必要輸入",
+      "pythonMissing": "未偵測到 Python 環境",
+      "processing": "處理中…"
+    },
+    "sharedPaths": {
+      "title": "共用路徑",
+      "folderPlaceholder": "拖放資料夾或使用瀏覽",
+      "gameResource": {
+        "label": "遊戲資源資料夾",
+        "hint": "BAMT 會在此資料夾尋找最新的資源 Bundle。"
+      },
+      "output": {
+        "label": "輸出資料夾",
+        "hint": "所有產生的檔案將存放於此，覆蓋前請先確認內容。"
+      }
+    },
+    "options": {
+      "title": "一般選項",
+      "enablePadding": "匯出時啟用 Padding（適用 PNG 與 B2B 流程）",
+      "createBackup": "覆寫原檔前建立備份（.bak）",
+      "replaceTexture": "替換 Texture2D 資源",
+      "replaceTextasset": "替換 TextAsset 資源",
+      "replaceMesh": "替換 Mesh 資源"
+    },
+    "tabs": {
+      "modUpdate": "Mod 更新",
+      "pngReplace": "PNG 替換"
+    },
+    "modUpdate": {
+      "oldMod": {
+        "title": "舊版 Mod Bundle",
+        "hint": "拖放或選擇歷史版本的 Mod 檔案",
+        "dropTitle": "拖放 .bundle / .zip 檔案至此"
+      },
+      "target": {
+        "title": "目標遊戲資源",
+        "hint": "可自動搜尋最新資源或手動指定",
+        "autoPrefix": "自動判定的檔名前綴",
+        "autoFind": "自動搜尋",
+        "dropTitle": "拖放新版 bundle 檔案至此"
+      },
+      "output": {
+        "title": "輸出目標",
+        "hint": "指定覆蓋用的輸出檔案名稱",
+        "placeholder": "輸出檔案名稱（預設沿用目標檔名）"
+      }
+    },
+    "pngReplace": {
+      "bundle": {
+        "title": "目標 Bundle",
+        "hint": "拖放欲替換素材的 bundle 檔案",
+        "dropTitle": "拖放 .bundle 檔案至此"
+      },
+      "folder": {
+        "title": "PNG 圖片資料夾",
+        "hint": "圖片名稱需與資源名稱一致",
+        "dropTitle": "拖放資料夾或使用瀏覽"
+      }
+    },
+    "drop": {
+      "noSelectionFile": "尚未選擇檔案",
+      "noSelectionFolder": "尚未選擇資料夾"
+    },
+    "log": {
+      "title": "日誌輸出",
+      "counter": "共 {{count}} 行",
+      "optionChange": "{{option}}：{{state}}",
+      "gameResourceSet": "遊戲資源資料夾設定為：{{path}}",
+      "gameResourceSynced": "已同步遊戲資源資料夾：{{path}}",
+      "gameResourceMissing": "尚未設定遊戲資源資料夾，請先在主視窗設定遊戲路徑。",
+      "gameResourceLoadError": "讀取遊戲資源資料夾失敗：{{error}}",
+      "outputDirSet": "輸出資料夾設定為：{{path}}",
+      "outputDirSynced": "已同步輸出資料夾：{{path}}",
+      "outputDirLoadError": "讀取預設輸出資料夾失敗：{{error}}",
+      "selectedOldMod": "已選擇舊版 Mod：{{name}}",
+      "selectedTargetBundle": "已選擇目標資源：{{name}}",
+      "selectedBundle": "已選擇 bundle 檔案：{{name}}",
+      "selectedPngFolder": "已選擇 PNG 資料夾：{{name}}",
+      "modUpdatePending": "已準備執行 B2B 替換流程（功能尚未串接）",
+      "pngReplacePending": "已準備執行 PNG 替換流程（功能尚未串接）",
+      "replaceOriginalUnavailable": "覆寫原始檔功能尚未串接，請手動確認檔案後再執行。",
+      "preview": "預覽設定：\n- 舊版 Mod：{{oldMod}}\n- 目標資源：{{targetBundle}}\n- 輸出檔名：{{outputName}}\n- 選項：{{options}}",
+      "autoFindSearching": "正在搜尋符合前綴「{{prefix}}」的新版資源…",
+      "autoFindFound": "已找到新版資源：{{name}}",
+      "autoFindFoundDetail": "使用來源：{{directory}}",
+      "autoFindMultiple": "找到 {{count}} 個可能的新版資源，已選用最符合的檔案：{{name}}",
+      "autoFindNotFound": "未在遊戲資源資料夾中找到符合條件的檔案，請手動選擇。",
+      "autoFindUnsupported": "目前環境無法執行自動搜尋，請手動指定新版資源。",
+      "autoFindError": "自動搜尋新版資源時發生錯誤：{{error}}",
+      "autoFindUnavailable": "自動搜尋新版資源尚未串接，請稍後或手動指定。",
+      "modUpdateAttemptingResolve": "正在已知路徑中尋找 {{name}}…",
+      "modUpdateOldModMaterialized": "已將舊版 Mod 複製到 {{path}}",
+      "modUpdateOldModResolved": "已在 {{path}} 找到舊版 Mod 檔案。",
+      "modUpdateOldModMissing": "找不到舊版 Mod 檔案：{{name}}，請重新選擇。",
+      "modUpdateNewBundleMaterialized": "已將目標資源檔案複製到 {{path}}",
+      "modUpdateNewBundleResolved": "已在 {{path}} 找到目標資源檔案。",
+      "modUpdateNewBundleMissing": "找不到目標資源檔案：{{name}}，請重新選擇。",
+      "openFolderError": "開啟資料夾時發生錯誤：{{error}}",
+      "openFolderSuccess": "已嘗試開啟資料夾：{{path}}",
+      "openFolderUnsupported": "目前環境不支援直接開啟資料夾，請手動操作。",
+      "interfaceReady": "BAMT 介面已就緒。",
+      "refreshModsTriggered": "偵測到預設輸出資料夾，已請求主視窗重新載入 Mod 清單。",
+      "refreshModsFailed": "通知主視窗重新載入 Mod 時失敗：{{error}}",
+      "pythonFound": "偵測到 Python 環境（指令：{{command}}，版本：{{version}}）",
+      "pythonMissing": "未找到 Python 執行環境，請安裝 Python 3.x 以使用此工具。",
+      "pythonCheckFailed": "檢查 Python 環境時發生錯誤：{{error}}",
+      "pythonVenvReady": "Python 虛擬環境已就緒：{{path}}",
+      "pythonVenvFailed": "Python 虛擬環境準備失敗，請查看上方日誌。",
+      "pythonUnknownVersion": "版本未知",
+      "genericError": "發生未知錯誤。",
+      "modUpdateStarted": "正在執行 B2B 替換…",
+      "modUpdateComplete": "B2B 替換完成，成功替換 {{replaced}} 個資產（略過 {{skipped}} 個）。輸出位置：{{output}}",
+      "modUpdateFailed": "B2B 替換失敗：{{error}}",
+      "pngReplaceStarted": "正在執行 PNG 替換…",
+      "pngReplaceComplete": "PNG 替換完成，成功替換 {{replaced}} 張貼圖。輸出位置：{{output}}",
+      "pngReplaceFailed": "PNG 替換失敗：{{error}}",
+      "pngReplaceMissing": "在 bundle 中找不到以下貼圖：{{list}}"
+    },
+    "common": {
+      "enabled": "啟用",
+      "disabled": "停用",
+      "notSelected": "未選擇",
+      "notConfigured": "未設定"
+    },
+    "validation": {
+      "missing": "{{target}} 尚未設定",
+      "folder": "資料夾",
+      "oldMod": "舊版 Mod 檔案",
+      "targetBundle": "目標資源檔案",
+      "outputDir": "輸出資料夾",
+      "gameResource": "遊戲資源資料夾",
+      "pngBundle": "目標 bundle",
+      "pngFolder": "PNG 資料夾"
+    }
+  }
 }
