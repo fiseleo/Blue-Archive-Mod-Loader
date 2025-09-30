@@ -45,10 +45,6 @@
                 <section class="panel-section">
                     <h2 data-i18n="bamt.options.title"></h2>
                     <label class="checkbox">
-                        <input type="checkbox" id="opt-create-backup" checked />
-                        <span data-i18n="bamt.options.createBackup"></span>
-                    </label>
-                    <label class="checkbox">
                         <input type="checkbox" id="opt-replace-texture" checked />
                         <span data-i18n="bamt.options.replaceTexture"></span>
                     </label>
@@ -112,8 +108,8 @@
                         <button class="secondary-btn" id="open-output-folder" type="button" data-i18n="bamt.actions.openOutput"></button>
                         <div class="action-group">
                             <button class="ghost-btn" id="preview-files" type="button" data-i18n="bamt.actions.preview"></button>
-                            <button class="primary-btn" id="run-mod-update" type="button" data-i18n="bamt.actions.runModUpdate"></button>
-                            <button class="danger-btn" id="replace-original" type="button" data-i18n="bamt.actions.replaceOriginal"></button>
+                            <button class="primary-btn" id="run-mod-update" type="button" data-i18n="bamt.actions.runModUpdate" disabled></button>
+                            <button class="danger-btn" id="replace-original" type="button" data-i18n="bamt.actions.replaceOriginal" disabled></button>
                         </div>
                     </div>
                 </section>
@@ -148,8 +144,8 @@
                     <div class="action-row">
                         <button class="secondary-btn" id="open-output-folder-png" type="button" data-i18n="bamt.actions.openOutput"></button>
                         <div class="action-group">
-                            <button class="primary-btn" id="run-png-replace" type="button" data-i18n="bamt.actions.runPngReplace"></button>
-                            <button class="danger-btn" id="replace-original-png" type="button" data-i18n="bamt.actions.replaceOriginal"></button>
+                            <button class="primary-btn" id="run-png-replace" type="button" data-i18n="bamt.actions.runPngReplace" disabled></button>
+                            <button class="danger-btn" id="replace-original-png" type="button" data-i18n="bamt.actions.replaceOriginal" disabled></button>
                         </div>
                     </div>
                 </section>

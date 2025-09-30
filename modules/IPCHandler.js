@@ -117,7 +117,8 @@ class IPCHandler {
             };
             try {
                 const args = this.buildModUpdateArgs(payload);
-                const result = await this.pythonManager.runCli('update', args, forwardLog);
+                const lang = payload?.lang || (this.i18next ? this.i18next.language : null) || 'en';
+                const result = await this.pythonManager.runCli('update', args, forwardLog, { lang });
                 return { ok: true, result };
             } catch (error) {
                 forwardLog({ level: 'error', message: error.message || String(error) });
@@ -135,7 +136,8 @@ class IPCHandler {
             };
             try {
                 const args = this.buildPngReplaceArgs(payload);
-                const result = await this.pythonManager.runCli('replace-png', args, forwardLog);
+                const lang = payload?.lang || (this.i18next ? this.i18next.language : null) || 'en';
+                const result = await this.pythonManager.runCli('replace-png', args, forwardLog, { lang });
                 return { ok: true, result };
             } catch (error) {
                 forwardLog({ level: 'error', message: error.message || String(error) });
@@ -150,6 +152,10 @@ class IPCHandler {
                     win.webContents.send('mods:refresh');
                 });
             return true;
+        });
+
+        ipcMain.handle('bamt:replaceOriginal', async (event, payload) => {
+            return await this.handleReplaceOriginal(payload);
         });
     }
 
@@ -251,6 +257,67 @@ class IPCHandler {
             '--output-dir', payload.outputDir,
         ];
         return args;
+    }
+
+    async handleReplaceOriginal(payload) {
+        const fs = require('fs').promises;
+        const fsSync = require('fs');
+        const path = require('path');
+
+        try {
+            const { outputPath, originalPath, type } = payload;
+
+            if (!outputPath || !originalPath) {
+                throw new Error('缺少必要參數：輸出路徑或原始路徑。');
+            }
+
+            // 檢查文件是否存在
+            if (!fsSync.existsSync(outputPath)) {
+                throw new Error(`處理後的文件不存在: ${outputPath}`);
+            }
+
+            if (!fsSync.existsSync(originalPath)) {
+                throw new Error(`原始文件不存在: ${originalPath}`);
+            }
+
+            // 確定輸出文件的實際路徑
+            const outputDir = path.dirname(outputPath);
+            const originalFileName = path.basename(originalPath);
+            const actualOutputPath = path.join(outputDir, originalFileName);
+
+            // 檢查處理後的文件是否存在
+            let sourceFile = outputPath;
+            if (!fsSync.existsSync(actualOutputPath)) {
+                // 如果使用原始文件名的文件不存在，使用原本的輸出路徑
+                sourceFile = outputPath;
+            } else {
+                sourceFile = actualOutputPath;
+            }
+
+            // 創建備份
+            const backupPath = originalPath + '.bak';
+            const backupExists = fsSync.existsSync(backupPath);
+            
+            if (!backupExists) {
+                await fs.copyFile(originalPath, backupPath);
+            }
+
+            // 複製處理後的文件覆蓋原始文件
+            await fs.copyFile(sourceFile, originalPath);
+
+            return {
+                ok: true,
+                backupPath: backupExists ? '(已存在備份)' : backupPath,
+                message: '原始文件已成功覆蓋'
+            };
+
+        } catch (error) {
+            console.error('Replace original file error:', error);
+            return {
+                ok: false,
+                error: error.message || String(error)
+            };
+        }
     }
 }
 

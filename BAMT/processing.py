@@ -7,32 +7,33 @@ from pathlib import Path
 from PIL import Image
 import shutil
 import re
+from i18n import t
 
 def load_bundle(bundle_path: Path, log):
     """
     尝试加载一个 Unity bundle 文件。
     如果直接加载失败，会尝试移除末尾的几个字节后再次加载。
     """
-    log(f"正在加载 bundle: {bundle_path.name}")
+    log(t('bamt.processing.loadingBundle', name=bundle_path.name))
 
     # 1. 尝试直接加载
     try:
-        log("  > 尝试直接加载...")
+        log(t('bamt.processing.tryDirectLoad'))
         env = UnityPy.load(str(bundle_path))
-        log("  ✅ 直接加载成功。")
+        log(t('bamt.processing.directLoadSuccess'))
         return env
     except Exception as e:
         if 'insufficient space' in str(e):
-            log(f"  > 直接加载失败，将尝试作为CRC修正后的文件加载。")
+            log(t('bamt.processing.directLoadFailedCRC'))
         else:
-            log(f"  > 直接加载失败: {e}。将尝试作为CRC修正后的文件加载。")
+            log(t('bamt.processing.directLoadFailed', error=e))
 
     # 如果直接加载失败，读取文件内容到内存
     try:
         with open(bundle_path, "rb") as f:
             data = f.read()
     except Exception as e:
-        log(f"  ❌ 错误: 无法读取文件 '{bundle_path.name}': {e}")
+        log(t('bamt.processing.fileReadError', name=bundle_path.name, error=e))
         return None
 
     # 定义加载策略：字节移除数量
@@ -42,17 +43,17 @@ def load_bundle(bundle_path: Path, log):
     for bytes_num in bytes_to_remove:
         if len(data) > bytes_num:
             try:
-                log(f"  > 尝试移除末尾{bytes_num}字节后加载...")
+                log(t('bamt.processing.tryRemoveBytes', num=bytes_num))
                 trimmed_data = data[:-bytes_num]
                 env = UnityPy.load(trimmed_data)
-                log(f"  ✅ 成功加载")
+                log(t('bamt.processing.removeBytesSuccess'))
                 return env
             except Exception as e:
-                log(f"  > 移除{bytes_num}字节后加载失败: {e}")
+                log(t('bamt.processing.removeBytesFailed', num=bytes_num, error=e))
         else:
-            log(f"  > 文件太小，无法移除{bytes_num}字节。")
+            log(t('bamt.processing.fileTooSmall', num=bytes_num))
 
-    log(f"❌ 严重错误: 无法以任何方式加载 '{bundle_path.name}'。文件可能已损坏。")
+    log(t('bamt.processing.loadFailed', name=bundle_path.name))
     return None
 
 def create_backup(original_path: Path, log, backup_mode: str = "default") -> bool:
@@ -67,12 +68,12 @@ def create_backup(original_path: Path, log, backup_mode: str = "default") -> boo
         else:
             backup_path = original_path.with_suffix(original_path.suffix + '.bak')
         
-        log(f"正在备份原始文件到: {backup_path.name}")
+        log(t('bamt.processing.creatingBackup', path=backup_path.name))
         shutil.copy2(original_path, backup_path)
-        log("✅ 备份已创建。")
+        log(t('bamt.processing.backupCreated'))
         return True
     except Exception as e:
-        log(f"❌ 严重错误: 创建备份文件失败: {e}")
+        log(t('bamt.processing.backupFailed', error=e))
         return False
 
 def save_bundle(env: UnityPy.Environment, output_path: Path, log) -> bool:
@@ -80,16 +81,16 @@ def save_bundle(env: UnityPy.Environment, output_path: Path, log) -> bool:
     将修改后的 Unity bundle 保存到指定路径。
     """
     try:
-        log(f"\n正在将修改后的 bundle 保存到: {output_path.name}")
-        log("压缩方式: LZMA (这可能需要一些时间...)")
+        log(t('bamt.processing.savingBundle', path=output_path.name))
+        log(t('bamt.processing.savingCompressing'))
         
         with open(output_path, "wb") as f:
             f.write(env.file.save(packer="lzma"))
         
-        log(f"✅ Bundle 文件已成功保存到: {output_path}")
+        log(t('bamt.processing.saveSuccess', path=output_path))
         return True
     except Exception as e:
-        log(f"❌ 保存 bundle 文件到 '{output_path}' 时失败: {e}")
+        log(t('bamt.processing.saveFailed', path=output_path, error=e))
         log(traceback.format_exc())
         return False
 
@@ -99,24 +100,34 @@ def process_png_replacement(target_bundle_path: Path, image_folder: Path, workin
     此函数将生成的文件保存在工作目录中，以便后续进行"覆盖原文件"操作。
     """
     try:
+        replacement_count = 0
+        missing_assets = []
+        final_path = None
         env = load_bundle(target_bundle_path, log)
         if not env:
-            return False, "无法加载目标 Bundle 文件，即使在尝试移除潜在的 CRC 补丁后也是如此。请检查文件是否损坏。"
+            return False, t('bamt.processing.png.loadFailed'), {
+                "replaced": 0,
+                "missing": [],
+                "output": None,
+            }
         
         replacement_tasks = []
         image_files = [f for f in os.listdir(image_folder) if f.lower().endswith(".png")]
 
         if not image_files:
-            log("⚠️ 警告: 在指定文件夹中没有找到任何 .png 文件。")
-            return False, "在指定文件夹中没有找到任何 .png 文件。"
+            log(t('bamt.processing.png.noPngFilesWarning'))
+            return False, t('bamt.processing.png.noPngFilesError'), {
+                "replaced": 0,
+                "missing": [],
+                "output": None,
+            }
 
         for filename in image_files:
             asset_name = os.path.splitext(filename)[0]
             full_image_path = os.path.join(image_folder, filename)
             replacement_tasks.append((asset_name, full_image_path))
 
-        log("正在扫描 bundle 并进行替换...")
-        replacement_count = 0
+        log(t('bamt.processing.png.scanning'))
         original_tasks_count = len(replacement_tasks)
 
         for obj in env.objects:
@@ -125,54 +136,71 @@ def process_png_replacement(target_bundle_path: Path, image_folder: Path, workin
                 task_to_remove = None
                 for asset_name, image_path in replacement_tasks:
                     if data.m_Name == asset_name:
-                        log(f"  > 找到匹配资源 '{asset_name}'，准备替换...")
+                        log(t('bamt.processing.png.matchFound', name=asset_name))
                         try:
                             img = Image.open(image_path).convert("RGBA")
                             data.image = img
                             data.save()
-                            log(f"    ✅ 成功: 资源 '{data.m_Name}' 已被替换。")
+                            log(t('bamt.processing.png.replaceSuccess', name=data.m_Name))
                             replacement_count += 1
                             task_to_remove = (asset_name, image_path)
                             break 
                         except Exception as e:
-                            log(f"    ❌ 错误: 替换资源 '{asset_name}' 时发生错误: {e}")
+                            log(t('bamt.processing.png.replaceFailed', name=asset_name, error=e))
                 if task_to_remove:
                     replacement_tasks.remove(task_to_remove)
 
         if replacement_count == 0:
-            log("⚠️ 警告: 没有执行任何成功的资源替换。")
-            log("请检查：\n1. 图片文件名（不含.png）是否与 bundle 内的 Texture2D 资源名完全匹配。\n2. bundle 文件是否正确。")
-            return False, "没有找到任何名称匹配的资源进行替换。"
+            log(t('bamt.processing.png.noReplacementWarning'))
+            log(t('bamt.processing.png.noReplacementHint'))
+            return False, t('bamt.processing.png.noReplacementError'), {
+                "replaced": 0,
+                "missing": [asset_name for asset_name, _ in replacement_tasks],
+                "output": None,
+            }
         
-        log(f"\n替换完成: 成功替换 {replacement_count} / {original_tasks_count} 个资源。")
+        log(t('bamt.processing.png.summary', count=replacement_count, total=original_tasks_count))
 
         if replacement_tasks:
-            log("⚠️ 警告: 以下图片文件未在bundle中找到对应的Texture2D资源:")
+            log(t('bamt.processing.png.unmatchedFilesWarning'))
             for asset_name, _ in replacement_tasks:
                 log(f"  - {asset_name}")
+        missing_assets = [asset_name for asset_name, _ in replacement_tasks]
 
         final_path = working_dir / target_bundle_path.name
 
-        log(f"\n--- 保存最终文件 ---")
-        log(f"  > 准备直接保存最终文件...")
+        log(t('bamt.processing.png.savingFinal'))
+        log(t('bamt.processing.png.savingDirect'))
         if not save_bundle(env, final_path, log):
-            return False, "保存最终文件失败，操作已终止。"
+            return False, t('bamt.processing.png.saveFailed'), {
+                "replaced": replacement_count,
+                "missing": missing_assets,
+                "output": str(final_path) if final_path else None,
+            }
 
-        log(f"最终文件已保存至: {final_path}")
-        log(f"\n🎉 处理完成！")
-        return True, f"处理完成！\n成功替换 {replacement_count} 个资源。\n\n文件已保存至工作目录，现在可以点击覆盖原文件按钮应用更改。"
+        log(t('bamt.processing.png.finalPath', path=final_path))
+        log(t('bamt.processing.png.processComplete'))
+        return True, t('bamt.processing.png.processCompleteMessage', count=replacement_count), {
+            "replaced": replacement_count,
+            "missing": missing_assets,
+            "output": str(final_path) if final_path else None,
+        }
 
     except Exception as e:
-        log(f"\n❌ 严重错误: 处理 bundle 文件时发生错误: {e}")
+        log(t('bamt.processing.fatalError', error=e))
         log(traceback.format_exc())
-        return False, f"处理过程中发生严重错误:\n{e}"
+        return False, t('bamt.processing.fatalErrorMessage', error=e), {
+            "replaced": 0,
+            "missing": [],
+            "output": None,
+        }
 
 def _b2b_replace(old_bundle_path: Path, new_bundle_path: Path, log, asset_types_to_replace: set):
     """
     执行 Bundle-to-Bundle 的核心替换逻辑。
     返回一个元组 (modified_env, replacement_count)，如果失败则 modified_env 为 None。
     """
-    log(f"正在从旧版 bundle 中提取指定类型的资源: {', '.join(asset_types_to_replace)}")
+    log(t('bamt.processing.b2b.extracting', types=', '.join(asset_types_to_replace)))
     old_env = load_bundle(old_bundle_path, log)
     if not old_env:
         return None, 0
@@ -194,12 +222,12 @@ def _b2b_replace(old_bundle_path: Path, new_bundle_path: Path, log, asset_types_
                 old_assets_map[asset_key] = obj.get_raw_data()
     
     if not old_assets_map:
-        log(f"⚠️ 警告: 在旧版 bundle 中没有找到任何指定类型的资源 ({', '.join(asset_types_to_replace)})。")
+        log(t('bamt.processing.b2b.noAssetsWarning', types=', '.join(asset_types_to_replace)))
         return None, 0
 
-    log(f"提取完成，共找到 {len(old_assets_map)} 个可替换资源。")
+    log(t('bamt.processing.b2b.extractSuccess', count=len(old_assets_map)))
 
-    log("\n正在扫描新版 bundle 并进行替换...")
+    log(t('bamt.processing.b2b.scanningNew'))
     new_env = load_bundle(new_bundle_path, log)
     if not new_env:
         return None, 0
@@ -219,20 +247,20 @@ def _b2b_replace(old_bundle_path: Path, new_bundle_path: Path, log, asset_types_
                         old_image = old_content
                         new_data.image = old_image
                         new_data.save()
-                        log(f"  ✅ 成功: 图像 '{new_data.m_Name}' ({new_data.m_TextureFormat.name}格式)已替换。")
+                        log(t('bamt.processing.b2b.replaceImageSuccess', name=new_data.m_Name, format=new_data.m_TextureFormat.name))
                     # 对于其他资源类型，保持原有的原始数据替换逻辑
                     else:
                         # old_content 此处是原始字节数据
                         obj.set_raw_data(old_content)
-                        log(f"  ✅ 成功: 资源 '{new_data.m_Name}' ({obj.type.name}类型)已替换。")
+                        log(t('bamt.processing.b2b.replaceAssetSuccess', name=new_data.m_Name, type=obj.type.name))
 
                     replacement_count += 1
                     replaced_assets.append(f"{new_data.m_Name} ({obj.type.name}, pathID: {obj.path_id})")
                 except Exception as e:
-                    log(f"  ❌ 错误: 替换资源 '{new_data.m_Name}' ({obj.type.name}类型)时发生错误: {e}")
+                    log(t('bamt.processing.b2b.replaceAssetFailed', name=new_data.m_Name, type=obj.type.name, error=e))
 
     if replacement_count > 0:
-        log(f"\n成功替换了 {replacement_count} 个资源:")
+        log(t('bamt.processing.b2b.totalReplaced', count=replacement_count))
         for name in replaced_assets:
             log(f"  - {name}")
     
@@ -245,29 +273,29 @@ def process_bundle_to_bundle_replacement(new_bundle_path: Path, old_bundle_path:
     try:
         if create_backup_file:
             if not create_backup(new_bundle_path, log, "b2b"):
-                return False, "创建备份失败，操作已终止。"
+                return False, t('bamt.processing.b2b.backupFailed')
 
         asset_types = {"Texture2D"}
         modified_env, replacement_count = _b2b_replace(old_bundle_path, new_bundle_path, log, asset_types)
 
         if not modified_env:
-            return False, "Bundle-to-Bundle 替换过程失败，请检查日志获取详细信息。"
+            return False, t('bamt.processing.b2b.replaceProcessFailed')
         
         if replacement_count == 0:
-            log("\n⚠️ 警告: 没有找到任何名称匹配的 Texture2D 资源进行替换。")
-            log("请确认新旧两个bundle包中确实存在同名的贴图资源。")
-            return False, "没有找到任何名称匹配的 Texture2D 资源进行替换。"
+            log(t('bamt.processing.b2b.noMatchingTextureWarning'))
+            log(t('bamt.processing.b2b.noMatchingTextureHint'))
+            return False, t('bamt.processing.b2b.noMatchingTextureError')
 
         if save_bundle(modified_env, output_path, log):
-            log("\n🎉 处理完成！")
-            return True, f"处理完成！\n成功恢复/替换了 {replacement_count} 个资源。\n\n文件已保存至:\n{output_path}"
+            log(t('bamt.processing.b2b.processComplete'))
+            return True, t('bamt.processing.b2b.processCompleteMessage', count=replacement_count, path=output_path)
         else:
-            return False, "保存文件失败，请检查日志获取详细信息。"
+            return False, t('bamt.processing.b2b.saveFailed')
 
     except Exception as e:
-        log(f"\n❌ 严重错误: 处理 bundle 文件时发生错误: {e}")
+        log(t('bamt.processing.fatalError', error=e))
         log(traceback.format_exc())
-        return False, f"处理过程中发生严重错误:\n{e}"
+        return False, t('bamt.processing.fatalErrorMessage', error=e)
 
 
 def find_new_bundle_path(old_mod_path: Path, game_resource_dir: Path, log):
@@ -277,61 +305,61 @@ def find_new_bundle_path(old_mod_path: Path, game_resource_dir: Path, log):
     """
     # TODO: 只用Texture2D比较好像不太对，但是it works
 
-    log(f"正在为 '{old_mod_path.name}' 搜索对应文件...")
+    log(t('bamt.processing.find.searching', name=old_mod_path.name))
 
     # 1. 通过日期模式确定文件名前缀，且扩展名相同
     date_match = re.search(r'\d{4}-\d{2}-\d{2}', old_mod_path.name)
     if not date_match:
-        msg = f"无法在旧文件名 '{old_mod_path.name}' 中找到日期模式 (YYYY-MM-DD)，无法确定用于匹配的文件前缀。"
-        log(f"  > 失败: {msg}")
+        msg = t('bamt.processing.find.noDatePattern', name=old_mod_path.name)
+        log(f"  > fail : {msg}")
         return None, msg
 
     prefix_end_index = date_match.start()
     search_prefix = old_mod_path.name[:prefix_end_index]
     extension = old_mod_path.suffix
-    log(f"  > 已确定文件名前缀: '{search_prefix}，扩展名: '{extension}'...'")
+    log(t('bamt.processing.find.prefixDetermined', prefix=search_prefix, ext=extension))
 
     # 2. 查找所有候选文件（前缀相同且扩展名一致）
     candidates = [f for f in game_resource_dir.iterdir() if f.is_file() and f.name.startswith(search_prefix) and f.suffix == extension]
     if not candidates:
-        msg = f"在指定目录 '{game_resource_dir}' 中未找到任何匹配的文件。"
-        log(f"  > 失败: {msg}")
+        msg = t('bamt.processing.find.noCandidates', dir=game_resource_dir)
+        log(f"  > fail : {msg}")
         return None, msg
-    log(f"  > 找到 {len(candidates)} 个候选文件，正在验证内容...")
+    log(t('bamt.processing.find.candidatesFound', count=len(candidates)))
 
     # 3. 加载旧Mod获取贴图列表
     old_env = load_bundle(old_mod_path, log)
     if not old_env:
-        msg = "加载旧版Mod文件失败。"
-        log(f"  > 失败: {msg}")
+        msg = "loading old mod file failed."
+        log(f"  > fail : {msg}")
         return None, msg
     
     old_textures_map = {obj.read().m_Name for obj in old_env.objects if obj.type.name == "Texture2D"}
     
     if not old_textures_map:
-        msg = "旧版Mod文件中不包含任何 Texture2D 资源。"
-        log(f"  > 失败: {msg}")
+        msg = "old mod contains no texture2d resources."
+        log(f"  > fail : {msg}")
         return None, msg
-    log(f"  > 旧版Mod包含 {len(old_textures_map)} 个贴图资源。")
+    log(f"  > old mod contains {len(old_textures_map)} texture resources.")
 
     # 4. 遍历候选文件，找到第一个包含匹配贴图的
     for candidate_path in candidates:
-        log(f"    - 正在检查: {candidate_path.name}")
+        log(f"    - checking: {candidate_path.name}")
         try:
             env = UnityPy.load(str(candidate_path))
             if not env: continue
             
             for obj in env.objects:
                 if obj.type.name == "Texture2D" and obj.read().m_Name in old_textures_map:
-                    msg = f"成功确定新版文件: {candidate_path.name}"
+                    msg = f"found matching texture: {candidate_path.name}"
                     log(f"  > ✅ {msg}")
                     return candidate_path, msg
         except Exception:
-            log(f"    - 警告: 无法加载候选文件 {candidate_path.name}, 已跳过。")
+            log(f"    - warning: failed to load candidate file {candidate_path.name}, skipping.")
             continue
     
-    msg = "在所有候选文件中都未找到与旧版Mod贴图名称匹配的资源。无法确定正确的新版文件。"
-    log(f"  > 失败: {msg}")
+    msg = "No asset matching the old mod texture name was found in any candidate files. Unable to determine the correct new file."
+    log(f"  > fail: {msg}")
     return None, msg
 
 
@@ -341,37 +369,57 @@ def process_mod_update(old_mod_path: Path, new_bundle_path: Path, working_dir: P
     此版本直接接收旧版Mod路径和新版资源路径，并且将文件保存在指定的working_dir下。
     """
     try:
-        log(f"  > 使用旧版 Mod: {old_mod_path.name}")
-        log(f"  > 使用新版资源: {new_bundle_path.name}")
-        log(f"  > 使用工作目录: {working_dir}")
+        log(f"  > using old mod: {old_mod_path.name}")
+        log(f"  > using new resources: {new_bundle_path.name}")
+        log(f"  > using working directory: {working_dir}")
 
         # --- 1. 执行 B2B 替换 ---
-        log("\n--- 阶段 1: Bundle-to-Bundle 替换 ---")
+        log("\n--- phase 1: Bundle-to-Bundle change ---")
         
         # 将资源类型集合传递给核心函数
         modified_env, replacement_count = _b2b_replace(old_mod_path, new_bundle_path, log, asset_types_to_replace)
 
         if not modified_env:
-            return False, "Bundle-to-Bundle 替换过程失败，请检查日志获取详细信息。"
+            return False, "Bundle-to-Bundle change process failed, please check the log for details.", {
+                "replaced": 0,
+                "skipped": 0,
+                "output": None,
+            }
         if replacement_count == 0:
-            return False, "没有找到任何名称匹配的资源进行替换，无法继续更新。"
-        
-        log(f"  > B2B 替换完成，共处理 {replacement_count} 个资源。")
+            return False, "No matching resources found for replacement, unable to continue update.", {
+                "replaced": 0,
+                "skipped": 0,
+                "output": None,
+            }
+
+        log(f"  > B2B change completed, processed {replacement_count} resources.")
 
         # --- 2. 保存最终文件 ---
         # 在工作目录下生成文件
         final_path = working_dir / new_bundle_path.name
 
-        log(f"\n--- 阶段 2: 保存最终文件 ---")
-        log(f"  > 准备直接保存最终文件...")
+        log(f"\n--- phase 2: Save final file ---")
+        log(f"  > Preparing to save final file...")
         if not save_bundle(modified_env, final_path, log):
-            return False, "保存最终文件失败，操作已终止。"
+            return False, "Failed to save final file, operation aborted.", {
+                "replaced": replacement_count,
+                "skipped": 0,
+                "output": str(final_path),
+            }
 
-        log(f"最终文件已保存至: {final_path}")
-        log(f"\n🎉 全部流程处理完成！")
-        return True, "一键更新成功！"
+        log(f"Final file saved to: {final_path}")
+        log(f"\n🎉 All processing completed successfully!")
+        return True, "Update completed successfully!", {
+            "replaced": replacement_count,
+            "skipped": 0,
+            "output": str(final_path),
+        }
 
     except Exception as e:
-        log(f"\n❌ 严重错误: 在一键更新流程中发生错误: {e}")
+        log(f"\n❌ Critical error: An error occurred during the update process: {e}")
         log(traceback.format_exc())
-        return False, f"处理过程中发生严重错误:\n{e}"
+        return False, f"Critical error occurred:\n{e}", {
+            "replaced": 0,
+            "skipped": 0,
+            "output": None,
+        }

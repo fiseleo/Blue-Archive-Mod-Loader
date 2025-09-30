@@ -22,7 +22,9 @@ const filesToObfuscate = [
     'modules/ModManager.js',
     'modules/GamePathManager.js',
     'modules/StudentIndexManager.js',
-    'modules/Utils.js'
+    'modules/PythonManager.js',
+    'modules/Utils.js',
+
 ];
 
 // 混淆選項 (可以提供很強的保護)

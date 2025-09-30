@@ -252,7 +252,7 @@ class PythonManager {
 		return path.join(this.bamtDir, 'cli.py');
 	}
 
-	async runCli(subcommand, args = [], logCallback) {
+	async runCli(subcommand, args = [], logCallback, options = {}) {
 		const logs = [];
 		const forwardLog = (message, level = 'info') => {
 			const entry = { message, level };
@@ -275,15 +275,19 @@ class PythonManager {
 			throw new Error('找不到 BAMT CLI 腳本 (cli.py)。');
 		}
 
-		const pythonArgs = [cliPath, subcommand, ...args];
+		const pythonArgs = [cliPath];
+		if (options && options.lang) {
+			pythonArgs.push('--lang', options.lang);
+		}
+		pythonArgs.push(subcommand, ...args);
 		const envVars = { ...process.env, PYTHONUTF8: '1' };
-		const options = {
+		const spawnOptions = {
 			cwd: this.bamtDir,
 			env: envVars,
 		};
 
 		return await new Promise((resolve, reject) => {
-			const child = spawn(envInfo.pythonPath, pythonArgs, options);
+			const child = spawn(envInfo.pythonPath, pythonArgs, spawnOptions);
 			let stdoutBuffer = '';
 			let stderrBuffer = '';
 			let resultPayload = null;

@@ -371,8 +371,8 @@ class ModManager {
         }
 
         // 只獲取選定要卸載的 Mod
-        const allMods = this.store.get('mods', []);
-        const modsToUninstall = allMods.filter(mod => selectedModIds.includes(mod.id));
+    const allMods = this.store.get('mods', []);
+    const modsToUninstall = allMods.filter(mod => selectedModIds.includes(mod.id));
         let operationsLog = [];
 
         for (const mod of modsToUninstall) {
@@ -402,6 +402,15 @@ class ModManager {
                 return { success: false, message: this.i18next.t('operation_failed'), log: operationsLog };
             }
         }
+
+        // 將已卸載的 Mod 標記為停用，避免仍顯示為勾選狀態
+        const updatedMods = allMods.map((mod) => {
+            if (selectedModIds.includes(mod.id)) {
+                return { ...mod, enabled: false };
+            }
+            return mod;
+        });
+        this.store.set('mods', updatedMods);
 
         console.log('Uninstall operations completed. Total operations', operationsLog.length);
         return { success: true, message: this.i18next.t('operation_success'), log: operationsLog };
