@@ -5,9 +5,26 @@ const path = require('path');
 const crypto = require('crypto');
 
 class PythonManager {
+	static resolveAsarPath(targetPath) {
+		if (!targetPath) {
+			return targetPath;
+		}
+		const unpackedMarker = 'app.asar.unpacked';
+		if (targetPath.includes(unpackedMarker)) {
+			return targetPath;
+		}
+		const asarMarker = 'app.asar';
+		const markerIndex = targetPath.indexOf(asarMarker);
+		if (markerIndex === -1) {
+			return targetPath;
+		}
+		return targetPath.replace(asarMarker, unpackedMarker);
+	}
+
 	constructor(rootDir, { appDataDir } = {}) {
 		this.rootDir = rootDir;
-		this.bamtDir = path.join(this.rootDir, 'BAMT');
+		const baseBamtDir = path.join(this.rootDir, 'BAMT');
+		this.bamtDir = PythonManager.resolveAsarPath(baseBamtDir);
 		this.appDataDir = appDataDir || process.env.APPDATA || path.join(this.rootDir, '.bamt-temp');
 		this.venvDir = path.join(this.appDataDir, '.venv');
 		this.requirementsPath = path.join(this.bamtDir, 'requirements.txt');
