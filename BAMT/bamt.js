@@ -7,6 +7,9 @@
 	let shell = null;
 	let ipcRenderer = null;
 	let path = null;
+	let fs = null;
+	let fastGlob = null;
+	let os = null;
 
 	try {
 		const electron = require('electron');
@@ -22,16 +25,39 @@
 		path = null;
 	}
 
+	try {
+		fs = require('fs');
+	} catch (error) {
+		fs = null;
+	}
+
+	try {
+		fastGlob = require('fast-glob');
+	} catch (error) {
+		fastGlob = null;
+	}
+
+	try {
+		os = require('os');
+	} catch (error) {
+		os = null;
+	}
+
 	const state = {
 		gameResourcePath: '',
 		outputDirPath: '',
 		oldMod: null,
+		oldModFile: null,
 		newBundle: null,
+		newBundleFile: null,
 		modOutputName: '',
 		pngBundle: null,
+		pngBundleFile: null,
 		pngFolder: null,
 		defaultOutputDir: '',
 	};
+
+	const CACHE_SUBDIR = '.bamt-cache';
 
 	const options = {
 		enablePadding: false,
@@ -375,6 +401,383 @@
 		return filename.replace(/\.bundle$/i, '');
 	}
 
+	function getFileNameFromPath(filePath) {
+		if (!filePath) {
+			return '';
+		}
+		if (path && typeof path.basename === 'function') {
+			return path.basename(filePath);
+		}
+		const parts = String(filePath).split(/[\\/]/);
+		return parts[parts.length - 1] || String(filePath);
+	}
+
+	function analyzeBundleName(fileName) {
+		if (!fileName || typeof fileName !== 'string') {
+			return null;
+		}
+		const trimmed = fileName.trim();
+		const lower = trimmed.toLowerCase();
+		const dateMatch = trimmed.match(/20\d{2}-\d{2}-\d{2}/);
+		const trailingMatch = trimmed.match(/^(.+?)(_?\d+)(\.bundle)$/i);
+		const baseWithoutNumber = trailingMatch ? trailingMatch[1] : trimmed.replace(/\.bundle$/i, '');
+		const trailingNumber = trailingMatch ? parseInt(trailingMatch[2].replace('_', ''), 10) : null;
+		return {
+			fileName: trimmed,
+			lower,
+			baseWithoutNumber,
+			baseLower: baseWithoutNumber.toLowerCase(),
+			trailingNumber: Number.isFinite(trailingNumber) ? trailingNumber : null,
+			date: dateMatch ? dateMatch[0] : null,
+		};
+	}
+
+	function escapeForGlob(value) {
+		return value.replace(/([\\^$+?.()|{}\[\]])/g, '\\$1');
+	}
+
+	function createWildcardPattern(fileName) {
+		const match = fileName.match(/^(.+?)(\d+)(\.bundle)$/i);
+		if (!match) {
+			return null;
+		}
+		const base = match[1];
+		const ext = match[3];
+		return `${escapeForGlob(base)}*${escapeForGlob(ext)}`;
+	}
+
+	function buildAutoFindPatterns(oldInfo, prefixValue) {
+		const results = new Set();
+		if (oldInfo && oldInfo.fileName) {
+			const escapedExact = escapeForGlob(oldInfo.fileName);
+			results.add(escapedExact);
+			const wildcardPattern = createWildcardPattern(oldInfo.fileName);
+			if (wildcardPattern) {
+				results.add(wildcardPattern);
+			}
+		}
+		if (prefixValue) {
+			const escapedPrefix = escapeForGlob(prefixValue);
+			results.add(`${escapedPrefix}*.bundle`);
+		}
+		return Array.from(results);
+	}
+
+	async function collectAutoFindCandidates(patterns, searchRoot) {
+		if (!patterns || patterns.length === 0 || !searchRoot) {
+			return [];
+		}
+		if (!fastGlob || typeof fastGlob !== 'function') {
+			return [];
+		}
+		const options = {
+			cwd: searchRoot,
+			onlyFiles: true,
+			absolute: true,
+			caseSensitiveMatch: false,
+			dot: false,
+			suppressErrors: true,
+			unique: true,
+		};
+		const matches = new Set();
+		for (const pattern of patterns) {
+			const globPattern = pattern.startsWith('**/') ? pattern : `**/${pattern}`;
+			try {
+				const found = await fastGlob(globPattern, options);
+				found.forEach((entry) => {
+					if (entry && typeof entry === 'string') {
+						matches.add(path ? path.resolve(entry) : entry);
+					}
+				});
+			} catch (error) {
+				console.error('Auto-find glob failed:', pattern, error);
+			}
+		}
+		return Array.from(matches).filter((entry) => typeof entry === 'string' && entry.toLowerCase().endsWith('.bundle'));
+	}
+
+	async function rankAutoFindCandidates(candidates, oldInfo, prefixValue) {
+		if (!candidates || candidates.length === 0) {
+			return [];
+		}
+		const prefixLower = prefixValue ? prefixValue.toLowerCase() : '';
+		const statsPromises = candidates.map(async (filePath) => {
+			const name = getFileNameFromPath(filePath);
+			const info = analyzeBundleName(name);
+			let mtimeMs = 0;
+			if (fs && fs.promises && typeof fs.promises.stat === 'function') {
+				try {
+					const stat = await fs.promises.stat(filePath);
+					mtimeMs = stat && typeof stat.mtimeMs === 'number' ? stat.mtimeMs : 0;
+				} catch (error) {
+					mtimeMs = 0;
+				}
+			}
+			const nameLower = name.toLowerCase();
+			return {
+				path: filePath,
+				name,
+				info,
+				mtimeMs,
+				weights: {
+					baseMatch: oldInfo && info ? Number(info.baseLower === oldInfo.baseLower) : 0,
+					prefixMatch: prefixLower ? Number(nameLower.startsWith(prefixLower)) : 0,
+					dateMatch: oldInfo && oldInfo.date ? Number(nameLower.includes(oldInfo.date.toLowerCase())) : 0,
+					trailingDifferent:
+						oldInfo && info && oldInfo.trailingNumber !== null && info.trailingNumber !== null
+							? Number(oldInfo.trailingNumber !== info.trailingNumber)
+							: 0,
+				},
+			};
+		});
+		const entries = await Promise.all(statsPromises);
+		return entries.sort((a, b) => {
+			if (b.weights.baseMatch !== a.weights.baseMatch) {
+				return b.weights.baseMatch - a.weights.baseMatch;
+			}
+			if (b.weights.prefixMatch !== a.weights.prefixMatch) {
+				return b.weights.prefixMatch - a.weights.prefixMatch;
+			}
+			if (b.weights.dateMatch !== a.weights.dateMatch) {
+				return b.weights.dateMatch - a.weights.dateMatch;
+			}
+			if (b.weights.trailingDifferent !== a.weights.trailingDifferent) {
+				return b.weights.trailingDifferent - a.weights.trailingDifferent;
+			}
+			return b.mtimeMs - a.mtimeMs;
+		});
+	}
+
+	async function performAutoFindSearch(prefixValue) {
+		if (!state.oldMod) {
+			return { best: null, ranked: [] };
+		}
+		const searchRoot = state.gameResourcePath;
+		if (!searchRoot) {
+			return { best: null, ranked: [] };
+		}
+		const oldFileName = getFileNameFromPath(state.oldMod);
+		const oldInfo = analyzeBundleName(oldFileName);
+		const patterns = buildAutoFindPatterns(oldInfo, prefixValue);
+		if (!patterns || patterns.length === 0) {
+			return { best: null, ranked: [] };
+		}
+		const candidates = await collectAutoFindCandidates(patterns, searchRoot);
+		if (!candidates || candidates.length === 0) {
+			return { best: null, ranked: [] };
+		}
+		const normalizedOld = normalizePath(state.oldMod);
+		const filtered = candidates.filter((candidate) => normalizePath(candidate) !== normalizedOld);
+		if (filtered.length === 0) {
+			return { best: null, ranked: [] };
+		}
+		const ranked = await rankAutoFindCandidates(filtered, oldInfo, prefixValue);
+		return { best: ranked[0] || null, ranked };
+	}
+
+	function fileExists(targetPath) {
+		if (!fs || !targetPath) {
+			return false;
+		}
+		if (typeof fs.existsSync === 'function') {
+			try {
+				return fs.existsSync(targetPath);
+			} catch (error) {
+				return false;
+			}
+		}
+		return false;
+	}
+
+	function getCacheDirectory(preferredBase) {
+		if (!path) {
+			return null;
+		}
+		const candidates = [preferredBase, state.outputDirPath, state.defaultOutputDir];
+		if (os && typeof os.tmpdir === 'function') {
+			candidates.push(os.tmpdir());
+		}
+		candidates.push(process.cwd());
+		for (const base of candidates) {
+			if (!base || typeof base !== 'string') {
+				continue;
+			}
+			try {
+				const absoluteBase = path.isAbsolute(base) ? base : path.resolve(base);
+				return path.join(absoluteBase, CACHE_SUBDIR);
+			} catch (error) {
+				// ignore invalid path values
+			}
+		}
+		return null;
+	}
+
+	async function materializeFileSelection(file, { preferredBaseDir } = {}) {
+		if (!file || typeof file.arrayBuffer !== 'function' || !fs || !fs.promises || !path) {
+			return null;
+		}
+		const cacheDir = getCacheDirectory(preferredBaseDir);
+		if (!cacheDir) {
+			return null;
+		}
+		try {
+			await fs.promises.mkdir(cacheDir, { recursive: true });
+		} catch (error) {
+			console.error('Unable to prepare cache directory:', error);
+			return null;
+		}
+		const baseName = file.name || `selection-${Date.now()}`;
+		const safeName = baseName.replace(/[\\/]/g, '_');
+		const targetPath = path.join(cacheDir, safeName);
+		if (!fileExists(targetPath)) {
+			try {
+				const buffer = Buffer.from(await file.arrayBuffer());
+				await fs.promises.writeFile(targetPath, buffer);
+			} catch (error) {
+				console.error('Failed to persist selection file:', error);
+				return null;
+			}
+		}
+		return targetPath;
+	}
+
+	async function resolveExistingFilePath(originalPath, extraDirs = []) {
+		if (!originalPath) {
+			return null;
+		}
+		if (!fs || !path) {
+			if (typeof originalPath === 'string') {
+				return originalPath;
+			}
+			return null;
+		}
+		if (fileExists(originalPath)) {
+			return originalPath;
+		}
+		const fileName = getFileNameFromPath(originalPath);
+		if (!fileName) {
+			return null;
+		}
+		const candidateDirs = new Set();
+		extraDirs.filter(Boolean).forEach((dir) => candidateDirs.add(dir));
+		if (state.outputDirPath) {
+			candidateDirs.add(state.outputDirPath);
+		}
+		if (state.gameResourcePath) {
+			candidateDirs.add(state.gameResourcePath);
+		}
+		if (state.oldMod && typeof state.oldMod === 'string') {
+			try {
+				if (path.isAbsolute(state.oldMod)) {
+					candidateDirs.add(path.dirname(state.oldMod));
+				}
+			} catch (error) {
+				// ignore invalid path states
+			}
+		}
+		if (state.newBundle && typeof state.newBundle === 'string') {
+			try {
+				if (path.isAbsolute(state.newBundle)) {
+					candidateDirs.add(path.dirname(state.newBundle));
+				}
+			} catch (error) {
+				// ignore invalid path states
+			}
+		}
+		for (const dir of candidateDirs) {
+			if (!dir || typeof dir !== 'string') {
+				continue;
+			}
+			let candidate = null;
+			try {
+				candidate = path.join(dir, fileName);
+			} catch (error) {
+				candidate = null;
+			}
+			if (candidate && fileExists(candidate)) {
+				return candidate;
+			}
+		}
+		if (!fastGlob) {
+			return null;
+		}
+		for (const dir of candidateDirs) {
+			if (!dir || typeof dir !== 'string') {
+				continue;
+			}
+			try {
+				const results = await fastGlob(`**/${escapeForGlob(fileName)}`, {
+					cwd: dir,
+					onlyFiles: true,
+					absolute: true,
+					caseSensitiveMatch: false,
+					suppressErrors: true,
+					unique: true,
+					deep: 5,
+				});
+				if (Array.isArray(results) && results.length > 0) {
+					return path.resolve(results[0]);
+				}
+			} catch (error) {
+				console.error('resolveExistingFilePath glob failed:', dir, error);
+			}
+		}
+		return null;
+	}
+
+	async function runAutoFind(triggerButton) {
+		const prerequisites = [
+			ensurePath(state.oldMod, 'bamt.validation.oldMod'),
+			ensurePath(state.gameResourcePath, 'bamt.validation.gameResource'),
+		];
+		if (!prerequisites.every(Boolean)) {
+			return;
+		}
+		if (!path || !fs || !fs.promises || !fastGlob || typeof fastGlob !== 'function') {
+			log(t('bamt.log.autoFindUnsupported'), 'warning');
+			return;
+		}
+		const prefixValue = autoFindPrefixInput.value.trim();
+		const prefixDisplay = prefixValue || t('bamt.common.notConfigured');
+		try {
+			if (triggerButton) {
+				triggerButton.disabled = true;
+			}
+			const searchingMessage = t('bamt.log.autoFindSearching', { prefix: prefixDisplay });
+			log(searchingMessage);
+			setStatus(searchingMessage, 'warning');
+			const { best, ranked } = await performAutoFindSearch(prefixValue);
+			if (!best) {
+				const notFoundMessage = t('bamt.log.autoFindNotFound');
+				log(notFoundMessage, 'warning');
+				setStatus(notFoundMessage, 'warning');
+				return;
+			}
+			state.newBundle = best.path;
+			setCaption('new-bundle', best.name);
+			if (!modOutputNameInput.value.trim()) {
+				modOutputNameInput.value = best.name;
+			}
+			state.modOutputName = modOutputNameInput.value.trim();
+			if (ranked.length > 1) {
+				log(t('bamt.log.autoFindMultiple', { count: ranked.length, name: best.name }));
+			} else {
+				log(t('bamt.log.autoFindFound', { name: best.name }));
+			}
+			if (path && typeof path.dirname === 'function') {
+				log(t('bamt.log.autoFindFoundDetail', { name: best.name, directory: path.dirname(best.path) }), 'success');
+			}
+			setStatus(t('bamt.log.autoFindFound', { name: best.name }), 'success');
+		} catch (error) {
+			console.error('Auto-find failed:', error);
+			log(t('bamt.log.autoFindError', { error: error.message || String(error) }), 'error');
+		} finally {
+			if (triggerButton) {
+				triggerButton.disabled = false;
+			}
+		}
+	}
+
 	function updateOption(optionKey, value) {
 		options[optionKey] = value;
 		const labelKey = OPTION_LABEL_KEYS[optionKey] || optionKey;
@@ -411,11 +814,13 @@
 		switch (target) {
 			case 'old-mod':
 				state.oldMod = fullPath;
+				state.oldModFile = file;
 				autoFindPrefixInput.value = extractAutoPrefix(fileName);
 				log(t('bamt.log.selectedOldMod', { name: fileName }));
 				break;
 			case 'new-bundle':
 				state.newBundle = fullPath;
+				state.newBundleFile = file;
 				if (!modOutputNameInput.value.trim()) {
 					modOutputNameInput.value = fileName;
 					state.modOutputName = fileName;
@@ -424,6 +829,7 @@
 				break;
 			case 'png-bundle':
 				state.pngBundle = fullPath;
+				state.pngBundleFile = file;
 				log(t('bamt.log.selectedBundle', { name: fileName }));
 				break;
 			case 'png-folder':
@@ -534,9 +940,59 @@
 			log(t('bamt.log.pythonMissing'), 'warning');
 			return;
 		}
+		let oldModPath = state.oldMod;
+		let newBundlePath = state.newBundle;
+		if (!fileExists(oldModPath)) {
+			const oldName = getFileNameFromPath(oldModPath) || oldModPath || '';
+			const safeOldName = oldName || t('bamt.common.notSelected');
+			log(t('bamt.log.modUpdateAttemptingResolve', { name: safeOldName }), 'warning');
+			let resolvedOldMod = await resolveExistingFilePath(oldModPath, [state.outputDirPath]);
+			if (!resolvedOldMod && state.oldModFile) {
+				const materializedOldMod = await materializeFileSelection(state.oldModFile, { preferredBaseDir: state.outputDirPath });
+				if (materializedOldMod && fileExists(materializedOldMod)) {
+					resolvedOldMod = materializedOldMod;
+					log(t('bamt.log.modUpdateOldModMaterialized', { path: materializedOldMod }), 'success');
+				}
+			}
+			if (resolvedOldMod) {
+				state.oldMod = resolvedOldMod;
+				oldModPath = resolvedOldMod;
+				const resolvedName = getFileNameFromPath(resolvedOldMod) || resolvedOldMod;
+				log(t('bamt.log.modUpdateOldModResolved', { name: resolvedName, path: resolvedOldMod }), 'success');
+			} else {
+				const message = t('bamt.log.modUpdateOldModMissing', { name: safeOldName });
+				log(message, 'error');
+				setStatus(message, 'error');
+				return;
+			}
+		}
+		if (!fileExists(newBundlePath)) {
+			const newName = getFileNameFromPath(newBundlePath) || newBundlePath || '';
+			const safeNewName = newName || t('bamt.common.notSelected');
+			log(t('bamt.log.modUpdateAttemptingResolve', { name: safeNewName }), 'warning');
+			let resolvedNewBundle = await resolveExistingFilePath(newBundlePath, [state.gameResourcePath]);
+			if (!resolvedNewBundle && state.newBundleFile) {
+				const materializedNewBundle = await materializeFileSelection(state.newBundleFile, { preferredBaseDir: state.gameResourcePath });
+				if (materializedNewBundle && fileExists(materializedNewBundle)) {
+					resolvedNewBundle = materializedNewBundle;
+					log(t('bamt.log.modUpdateNewBundleMaterialized', { path: materializedNewBundle }), 'success');
+				}
+			}
+			if (resolvedNewBundle) {
+				state.newBundle = resolvedNewBundle;
+				newBundlePath = resolvedNewBundle;
+				const resolvedName = getFileNameFromPath(resolvedNewBundle) || resolvedNewBundle;
+				log(t('bamt.log.modUpdateNewBundleResolved', { name: resolvedName, path: resolvedNewBundle }), 'success');
+			} else {
+				const message = t('bamt.log.modUpdateNewBundleMissing', { name: safeNewName });
+				log(message, 'error');
+				setStatus(message, 'error');
+				return;
+			}
+		}
 		const payload = {
-			oldMod: state.oldMod,
-			newBundle: state.newBundle,
+			oldMod: oldModPath,
+			newBundle: newBundlePath,
 			outputDir: state.outputDirPath,
 			outputName: state.modOutputName,
 			enablePadding: !!options.enablePadding,
@@ -646,12 +1102,10 @@
 			);
 		});
 
-		document.getElementById('auto-find-btn').addEventListener('click', () => {
-			const ready = ensurePath(state.oldMod, 'bamt.validation.oldMod') && ensurePath(state.gameResourcePath, 'bamt.validation.gameResource');
-			if (!ready) {
-				return;
-			}
-			log(t('bamt.log.autoFindUnavailable'), 'warning');
+
+		const autoFindBtn = document.getElementById('auto-find-btn');
+		autoFindBtn.addEventListener('click', () => {
+			void runAutoFind(autoFindBtn);
 		});
 
 		document.getElementById('open-output-folder').addEventListener('click', () => {

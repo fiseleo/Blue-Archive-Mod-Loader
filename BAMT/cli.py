@@ -44,9 +44,14 @@ def ensure_exists(path: Path, kind: str) -> Path:
 
 
 def save_environment(env: UnityPy.Environment, output_path: Path, enable_padding: bool) -> None:
-    padding = 16 if enable_padding else 0
+    data = env.file.save()
+    if enable_padding:
+        padding_size = 16
+        remainder = len(data) % padding_size
+        if remainder:
+            data += b"\x00" * (padding_size - remainder)
     with output_path.open("wb") as f:
-        f.write(env.file.save(padding=padding))
+        f.write(data)
 
 
 def create_backup_if_needed(target_path: Path, enable_backup: bool) -> Optional[Path]:
