@@ -91,7 +91,7 @@ body {
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 2000px;
     margin: 0 auto;
     padding: 2rem;
 }
@@ -159,7 +159,7 @@ body {
 /* Layout Grid */
 .content-grid {
     display: grid;
-    grid-template-columns: 1fr 2fr;
+    grid-template-columns: minmax(320px, 1fr) minmax(0, 2.4fr);
     gap: 1.5rem;
     margin-bottom: 2rem;
 }
@@ -301,7 +301,7 @@ body {
 
 /* Table column widths */
 .col-checkbox { width: 60px; }
-.col-filename { width: 400x; }
+.col-filename { width: 460px; }
 .col-modname { width: 450px; }
 .col-character { width: 250px; }
 .col-date { width: 140px; }
