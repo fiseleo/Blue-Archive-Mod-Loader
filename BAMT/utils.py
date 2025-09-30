@@ -1,6 +1,7 @@
 # utils.py
 
 import tkinter as tk
+from i18n import t
 
 
 class Logger:
@@ -22,7 +23,7 @@ class Logger:
     def status(self, message):
         """线程安全地更新状态栏消息"""
         def _update_status():
-            self.status_widget.config(text=f"状态：{message}")
+            self.status_widget.config(text=t('bamt.utils.status', message=message))
         
         self.master.after(0, _update_status)
 

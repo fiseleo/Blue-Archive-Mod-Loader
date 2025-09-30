@@ -117,7 +117,8 @@ class IPCHandler {
             };
             try {
                 const args = this.buildModUpdateArgs(payload);
-                const result = await this.pythonManager.runCli('update', args, forwardLog);
+                const lang = payload?.lang || (this.i18next ? this.i18next.language : null) || 'en';
+                const result = await this.pythonManager.runCli('update', args, forwardLog, { lang });
                 return { ok: true, result };
             } catch (error) {
                 forwardLog({ level: 'error', message: error.message || String(error) });
@@ -135,7 +136,8 @@ class IPCHandler {
             };
             try {
                 const args = this.buildPngReplaceArgs(payload);
-                const result = await this.pythonManager.runCli('replace-png', args, forwardLog);
+                const lang = payload?.lang || (this.i18next ? this.i18next.language : null) || 'en';
+                const result = await this.pythonManager.runCli('replace-png', args, forwardLog, { lang });
                 return { ok: true, result };
             } catch (error) {
                 forwardLog({ level: 'error', message: error.message || String(error) });

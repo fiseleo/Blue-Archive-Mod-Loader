@@ -314,6 +314,11 @@
 				log(t('bamt.log.pythonFound', { command: result.command, version: versionText }), 'success');
 				if (result.venvReady) {
 					log(t('bamt.log.pythonVenvReady', { path: result.venvPath || '' }), 'success');
+					// 啟用所有按鈕
+					document.getElementById('run-mod-update').disabled = false;
+					document.getElementById('replace-original').disabled = false;
+					document.getElementById('run-png-replace').disabled = false;
+					document.getElementById('replace-original-png').disabled = false;
 				} else {
 					log(t('bamt.log.pythonVenvFailed'), 'warning');
 				}
@@ -1042,6 +1047,7 @@
 			replaceTexture: !!options.replaceTexture,
 			replaceTextasset: !!options.replaceTextasset,
 			replaceMesh: !!options.replaceMesh,
+			lang: i18next.language || 'en',
 		};
 		try {
 			if (triggerButton) {
@@ -1097,6 +1103,7 @@
 			bundle: state.pngBundle,
 			pngFolder: state.pngFolder,
 			outputDir: state.outputDirPath,
+			lang: i18next.language || 'en',
 		};
 		try {
 			if (triggerButton) {
