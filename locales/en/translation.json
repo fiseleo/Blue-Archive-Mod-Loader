@@ -120,7 +120,8 @@
       "idle": "Idle",
       "prerequisitesMissing": "Please complete the required inputs first",
       "pythonMissing": "Python runtime is missing",
-      "processing": "Processing…"
+      "processing": "Processing…",
+      "replacingOriginal": "Overwriting original file…"
     },
     "sharedPaths": {
       "title": "Shared Paths",
@@ -136,7 +137,6 @@
     },
     "options": {
       "title": "General Options",
-      "createBackup": "Create a backup (.bak) before overwriting original files",
       "replaceTexture": "Replace Texture2D assets",
       "replaceTextasset": "Replace TextAsset resources",
       "replaceMesh": "Replace Mesh resources"
@@ -198,6 +198,12 @@
       "modUpdatePending": "Ready to run B2B replacement (feature not yet wired)",
       "pngReplacePending": "Ready to run PNG replacement (feature not yet wired)",
       "replaceOriginalUnavailable": "Overwrite feature is not yet wired. Please verify manually before proceeding.",
+      "noProcessedFile": "No {{type}} process has been executed, cannot overwrite original file.",
+      "replaceOriginalMissingPaths": "Missing required file path information, cannot overwrite original file.",
+      "electronApiUnavailable": "Electron API unavailable, cannot perform overwrite operation.",
+      "replaceOriginalStarted": "Starting to overwrite original file: {{fileName}}",
+      "replaceOriginalComplete": "Successfully overwrote original file: {{fileName}} (Backup: {{backup}})",
+      "replaceOriginalFailed": "Failed to overwrite original file: {{error}}",
       "preview": "Preview settings:\n- Legacy Mod: {{oldMod}}\n- Target Bundle: {{targetBundle}}\n- Output Name: {{outputName}}\n- Options: {{options}}",
       "autoFindSearching": "Searching for bundles matching prefix \"{{prefix}}\"...",
       "autoFindFound": "Auto search located a candidate: {{name}}",

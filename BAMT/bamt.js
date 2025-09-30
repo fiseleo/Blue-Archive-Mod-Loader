@@ -55,12 +55,15 @@
 		pngBundleFile: null,
 		pngFolder: null,
 		defaultOutputDir: '',
+		lastProcessedFiles: {
+			modUpdate: null,
+			pngReplace: null,
+		},
 	};
 
 	const CACHE_SUBDIR = '.bamt-cache';
 
 	const options = {
-		createBackup: true,
 		replaceTexture: true,
 		replaceTextasset: false,
 		replaceMesh: false,
@@ -94,7 +97,6 @@
 	let logLineCount = 0;
 
 	const OPTION_LABEL_KEYS = {
-		createBackup: 'bamt.options.createBackup',
 		replaceTexture: 'bamt.options.replaceTexture',
 		replaceTextasset: 'bamt.options.replaceTextasset',
 		replaceMesh: 'bamt.options.replaceMesh',
@@ -924,6 +926,50 @@
 		}
 	}
 
+	async function replaceOriginalFile(type) {
+		const lastProcessed = state.lastProcessedFiles[type];
+		if (!lastProcessed) {
+			log(t('bamt.log.noProcessedFile', { type }), 'warning');
+			return;
+		}
+
+		const { outputPath, originalPath, processedFileName } = lastProcessed;
+		
+		if (!outputPath || !originalPath) {
+			log(t('bamt.log.replaceOriginalMissingPaths'), 'error');
+			return;
+		}
+
+		if (!ipcRenderer || typeof ipcRenderer.invoke !== 'function') {
+			log(t('bamt.log.electronApiUnavailable'), 'warning');
+			return;
+		}
+
+		try {
+			setStatus(t('bamt.status.replacingOriginal'), 'warning');
+			log(t('bamt.log.replaceOriginalStarted', { fileName: processedFileName || 'unknown' }));
+
+			const response = await ipcRenderer.invoke('bamt:replaceOriginal', {
+				outputPath,
+				originalPath,
+				type
+			});
+
+			if (!response || !response.ok) {
+				throw new Error((response && response.error) || t('bamt.log.genericError'));
+			}
+
+			log(t('bamt.log.replaceOriginalComplete', { 
+				fileName: processedFileName || 'unknown',
+				backup: response.backupPath || 'none'
+			}), 'success');
+			setStatus(t('bamt.status.idle'), 'idle');
+		} catch (error) {
+			log(t('bamt.log.replaceOriginalFailed', { error: error.message || String(error) }), 'error');
+			setStatus(t('bamt.status.idle'), 'idle');
+		}
+	}
+
 	async function runModUpdateFlow(triggerButton) {
 		const prerequisites = [
 			ensurePath(state.oldMod, 'bamt.validation.oldMod'),
@@ -993,7 +1039,6 @@
 			newBundle: newBundlePath,
 			outputDir: state.outputDirPath,
 			outputName: state.modOutputName,
-			createBackup: !!options.createBackup,
 			replaceTexture: !!options.replaceTexture,
 			replaceTextasset: !!options.replaceTextasset,
 			replaceMesh: !!options.replaceMesh,
@@ -1012,6 +1057,15 @@
 			const replaced = typeof result.replaced === 'number' ? result.replaced : 0;
 			const skipped = typeof result.skipped === 'number' ? result.skipped : 0;
 			const outputPath = result.output || state.outputDirPath || '';
+			
+			// 記錄處理結果，用於覆寫原始檔功能
+			state.lastProcessedFiles.modUpdate = {
+				outputPath: outputPath,
+				originalPath: newBundlePath,
+				processedFileName: path ? path.basename(newBundlePath) : null,
+				timestamp: new Date(),
+			};
+			
 			log(t('bamt.log.modUpdateComplete', { replaced, skipped, output: outputPath }), 'success');
 			if (isUsingDefaultOutputDir()) {
 				await notifyModsRefresh();
@@ -1057,6 +1111,15 @@
 			const result = response.result || {};
 			const replaced = typeof result.replaced === 'number' ? result.replaced : 0;
 			const outputPath = result.output || state.outputDirPath || '';
+			
+			// 記錄處理結果，用於覆寫原始檔功能
+			state.lastProcessedFiles.pngReplace = {
+				outputPath: outputPath,
+				originalPath: state.pngBundle,
+				processedFileName: path ? path.basename(state.pngBundle) : null,
+				timestamp: new Date(),
+			};
+			
 			log(t('bamt.log.pngReplaceComplete', { replaced, output: outputPath }), 'success');
 			if (Array.isArray(result.missing) && result.missing.length > 0) {
 				log(t('bamt.log.pngReplaceMissing', { list: result.missing.join(', ') }), 'warning');
@@ -1084,7 +1147,7 @@
 		});
 
 		document.getElementById('replace-original').addEventListener('click', () => {
-			log(t('bamt.log.replaceOriginalUnavailable'), 'warning');
+			replaceOriginalFile('modUpdate');
 		});
 
 		document.getElementById('preview-files').addEventListener('click', () => {
@@ -1118,7 +1181,7 @@
 		});
 
 		document.getElementById('replace-original-png').addEventListener('click', () => {
-			log(t('bamt.log.replaceOriginalUnavailable'), 'warning');
+			replaceOriginalFile('pngReplace');
 		});
 
 		modOutputNameInput.addEventListener('input', (event) => {
@@ -1130,7 +1193,6 @@
 
 	function bindOptions() {
 		const optionMap = {
-			'opt-create-backup': 'createBackup',
 			'opt-replace-texture': 'replaceTexture',
 			'opt-replace-textasset': 'replaceTextasset',
 			'opt-replace-mesh': 'replaceMesh',

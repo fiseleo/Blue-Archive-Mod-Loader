@@ -120,7 +120,8 @@
       "idle": "待命",
       "prerequisitesMissing": "請先完成必要輸入",
       "pythonMissing": "未偵測到 Python 環境",
-      "processing": "處理中…"
+      "processing": "處理中…",
+      "replacingOriginal": "正在覆寫原始檔…"
     },
     "sharedPaths": {
       "title": "共用路徑",
@@ -136,7 +137,6 @@
     },
     "options": {
       "title": "一般選項",
-      "createBackup": "覆寫原檔前建立備份（.bak）",
       "replaceTexture": "替換 Texture2D 資源",
       "replaceTextasset": "替換 TextAsset 資源",
       "replaceMesh": "替換 Mesh 資源"
@@ -198,6 +198,12 @@
       "modUpdatePending": "已準備執行 B2B 替換流程（功能尚未串接）",
       "pngReplacePending": "已準備執行 PNG 替換流程（功能尚未串接）",
       "replaceOriginalUnavailable": "覆寫原始檔功能尚未串接，請手動確認檔案後再執行。",
+      "noProcessedFile": "尚未執行 {{type}} 處理，無法覆寫原始檔。",
+      "replaceOriginalMissingPaths": "缺少必要的檔案路徑資訊，無法覆寫原始檔。",
+      "electronApiUnavailable": "Electron API 不可用，無法執行覆寫操作。",
+      "replaceOriginalStarted": "開始覆寫原始檔：{{fileName}}",
+      "replaceOriginalComplete": "成功覆寫原始檔：{{fileName}}（備份：{{backup}}）",
+      "replaceOriginalFailed": "覆寫原始檔失敗：{{error}}",
       "preview": "預覽設定：\n- 舊版 Mod：{{oldMod}}\n- 目標資源：{{targetBundle}}\n- 輸出檔名：{{outputName}}\n- 選項：{{options}}",
       "autoFindSearching": "正在搜尋符合前綴「{{prefix}}」的新版資源…",
       "autoFindFound": "已找到新版資源：{{name}}",
