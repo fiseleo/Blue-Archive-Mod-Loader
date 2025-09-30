@@ -60,7 +60,6 @@
 	const CACHE_SUBDIR = '.bamt-cache';
 
 	const options = {
-		enablePadding: false,
 		createBackup: true,
 		replaceTexture: true,
 		replaceTextasset: false,
@@ -95,7 +94,6 @@
 	let logLineCount = 0;
 
 	const OPTION_LABEL_KEYS = {
-		enablePadding: 'bamt.options.enablePadding',
 		createBackup: 'bamt.options.createBackup',
 		replaceTexture: 'bamt.options.replaceTexture',
 		replaceTextasset: 'bamt.options.replaceTextasset',
@@ -995,7 +993,6 @@
 			newBundle: newBundlePath,
 			outputDir: state.outputDirPath,
 			outputName: state.modOutputName,
-			enablePadding: !!options.enablePadding,
 			createBackup: !!options.createBackup,
 			replaceTexture: !!options.replaceTexture,
 			replaceTextasset: !!options.replaceTextasset,
@@ -1046,7 +1043,6 @@
 			bundle: state.pngBundle,
 			pngFolder: state.pngFolder,
 			outputDir: state.outputDirPath,
-			enablePadding: !!options.enablePadding,
 		};
 		try {
 			if (triggerButton) {
@@ -1134,7 +1130,6 @@
 
 	function bindOptions() {
 		const optionMap = {
-			'opt-enable-padding': 'enablePadding',
 			'opt-create-backup': 'createBackup',
 			'opt-replace-texture': 'replaceTexture',
 			'opt-replace-textasset': 'replaceTextasset',

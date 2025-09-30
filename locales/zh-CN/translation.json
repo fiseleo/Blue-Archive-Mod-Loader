@@ -136,7 +136,6 @@
     },
     "options": {
       "title": "常规选项",
-      "enablePadding": "导出时启用 Padding（适用于 PNG 与 B2B 流程）",
       "createBackup": "覆盖原文件前创建备份（.bak）",
       "replaceTexture": "替换 Texture2D 资源",
       "replaceTextasset": "替换 TextAsset 资源",

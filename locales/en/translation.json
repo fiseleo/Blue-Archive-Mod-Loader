@@ -136,7 +136,6 @@
     },
     "options": {
       "title": "General Options",
-      "enablePadding": "Enable padding when exporting (affects PNG & B2B flows)",
       "createBackup": "Create a backup (.bak) before overwriting original files",
       "replaceTexture": "Replace Texture2D assets",
       "replaceTextasset": "Replace TextAsset resources",
