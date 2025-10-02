@@ -6,6 +6,7 @@ const i18next = require('i18next');
 const Backend = require('i18next-fs-backend');
 
 // 導入模塊
+const devtoolsModule = require('./modules/DevTools');
 const Utils = require('./modules/Utils');
 const GamePathManager = require('./modules/GamePathManager');
 const StudentIndexManager = require('./modules/StudentIndexManager');
@@ -50,7 +51,8 @@ function createWindow() {
 
 	win.loadFile('index.html');
 	win.setMenu(null);
-
+	
+	devtoolsModule.EnableDevTools(app.isPackaged, win);
 	win.webContents.on('did-finish-load', async () => {
 		let gamePath = store.get('gamePath');
 		let gameBundlePath = store.get('gameBundlePath');
@@ -136,6 +138,10 @@ app.whenReady().then(async () => {
 			createWindow();
 		}
 	});
+});
+
+app.on('will-quit', () => {
+	devtoolsModule.DisableDevTools();
 });
 
 app.on('window-all-closed', () => {

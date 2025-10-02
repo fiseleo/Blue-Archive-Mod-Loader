@@ -24,7 +24,7 @@ class ModManager {
 
         // 嘗試載入 CRC Patcher
         try {
-            this.crcPatcher = require('../crc_patcher.js');
+            this.crcPatcher = require('../crc-patcher.js');
             console.log('CRC Patcher module loaded successfully.');
         } catch (e) {
             if (e.code === 'MODULE_NOT_FOUND') {

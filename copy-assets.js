@@ -50,7 +50,7 @@ assetsToCopy.forEach(asset => {
 });
 
 
-const patcherFile = 'crc_patcher.js';
+const patcherFile = 'crc-patcher.js';
 const patcherSrcPath = path.join(__dirname, patcherFile);
 if (fs.existsSync(patcherSrcPath)) {
     fs.copySync(patcherSrcPath, path.join(distDir, patcherFile));
