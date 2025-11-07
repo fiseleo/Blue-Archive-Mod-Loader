@@ -6,6 +6,12 @@ if (!i18next) {
     throw new Error('i18next global is unavailable. Ensure i18next.min.js is loaded before renderer.js.');
 }
 
+// 排序狀態
+let sortState = {
+    column: null,
+    direction: 'asc' // 'asc' 或 'desc'
+};
+
 async function initializeI18n() {
     const userLocale = await window.i18n.getLocale();
 
@@ -141,6 +147,103 @@ function selectAllMods() {
             }
         });
     }
+}
+
+// 排序 mods 陣列
+function sortMods(mods, column, direction) {
+    const sortedMods = [...mods];
+    
+    sortedMods.sort((a, b) => {
+        let valueA, valueB;
+        
+        switch (column) {
+            case 'character':
+                valueA = (a.character || '').toLowerCase();
+                valueB = (b.character || '').toLowerCase();
+                break;
+            case 'fileName':
+                valueA = a.fileName.toLowerCase();
+                valueB = b.fileName.toLowerCase();
+                break;
+            case 'modName':
+                valueA = a.modName.toLowerCase();
+                valueB = b.modName.toLowerCase();
+                break;
+            case 'installedDate':
+                valueA = new Date(a.installedDate || 0);
+                valueB = new Date(b.installedDate || 0);
+                break;
+            default:
+                return 0;
+        }
+        
+        if (column === 'installedDate') {
+            // 日期排序
+            if (direction === 'asc') {
+                return valueA - valueB;
+            } else {
+                return valueB - valueA;
+            }
+        } else {
+            // 字符串排序
+            if (valueA < valueB) {
+                return direction === 'asc' ? -1 : 1;
+            }
+            if (valueA > valueB) {
+                return direction === 'asc' ? 1 : -1;
+            }
+            return 0;
+        }
+    });
+    
+    return sortedMods;
+}
+
+// 設置表頭點擊排序
+function setupTableSorting() {
+    const tableHeaders = document.querySelectorAll('#mod-table th[data-sortable]');
+    
+    tableHeaders.forEach(header => {
+        header.style.cursor = 'pointer';
+        header.style.userSelect = 'none';
+        
+        // 添加排序指示器
+        const sortIndicator = document.createElement('span');
+        sortIndicator.className = 'sort-indicator';
+        sortIndicator.innerHTML = ' ↕️';
+        header.appendChild(sortIndicator);
+        
+        header.addEventListener('click', async () => {
+            const column = header.dataset.sortable;
+            
+            // 切換排序方向
+            if (sortState.column === column) {
+                sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortState.column = column;
+                sortState.direction = 'asc';
+            }
+            
+            // 更新所有指示器
+            tableHeaders.forEach(h => {
+                const indicator = h.querySelector('.sort-indicator');
+                if (h === header) {
+                    indicator.innerHTML = sortState.direction === 'asc' ? ' ↑' : ' ↓';
+                } else {
+                    indicator.innerHTML = ' ↕️';
+                }
+            });
+            
+            // 獲取當前 mods 並排序
+            try {
+                const mods = await window.api.getMods();
+                const sortedMods = sortMods(mods, sortState.column, sortState.direction);
+                renderModTable(sortedMods);
+            } catch (error) {
+                console.error('Failed to sort mods:', error);
+            }
+        });
+    });
 }
 
 
@@ -320,13 +423,22 @@ function setupEventListeners() {
             console.error('Failed to refresh mods table:', error);
         }
     });
+    
+    // 設置表格排序功能
+    setupTableSorting();
 }
 
 function renderModTable(mods) {
     const tableBody = document.getElementById('mod-table-body');
     tableBody.innerHTML = ''; // 清空舊的內容
 
-    if (!mods || mods.length === 0) {
+    // 如果有排序狀態，應用排序
+    let displayMods = mods;
+    if (sortState.column && sortState.direction) {
+        displayMods = sortMods(mods, sortState.column, sortState.direction);
+    }
+
+    if (!displayMods || displayMods.length === 0) {
         const row = tableBody.insertRow();
         const cell = row.insertCell();
         cell.colSpan = 6; // Updated to 6 columns (added character column)
@@ -336,10 +448,10 @@ function renderModTable(mods) {
     }
 
     // Detect conflicts
-    const conflicts = detectConflictingMods(mods);
+    const conflicts = detectConflictingMods(displayMods);
     const hasConflicts = Object.values(conflicts).some(versions => versions.length > 1);
 
-    mods.forEach(mod => {
+    displayMods.forEach(mod => {
         const row = tableBody.insertRow();
         const isConflicted = conflicts[mod.fileName] && conflicts[mod.fileName].length > 1;
 

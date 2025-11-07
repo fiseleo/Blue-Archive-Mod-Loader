@@ -62,6 +62,7 @@
             <main class="main-panel">
                 <nav class="tab-bar" role="tablist">
                     <button class="tab-btn active" role="tab" aria-selected="true" data-tab="mod-update" data-i18n="bamt.tabs.modUpdate">Mod 更新</button>
+                    <button class="tab-btn" role="tab" aria-selected="false" data-tab="batch-update" data-i18n="bamt.tabs.batchUpdate">批次更新</button>
                     <button class="tab-btn" role="tab" aria-selected="false" data-tab="png-replace" data-i18n="bamt.tabs.pngReplace">PNG 替換</button>
                 </nav>
 
@@ -110,6 +111,79 @@
                             <button class="ghost-btn" id="preview-files" type="button" data-i18n="bamt.actions.preview"></button>
                             <button class="primary-btn" id="run-mod-update" type="button" data-i18n="bamt.actions.runModUpdate" disabled></button>
                             <button class="danger-btn" id="replace-original" type="button" data-i18n="bamt.actions.replaceOriginal" disabled></button>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="tab-panel" data-tab-panel="batch-update" role="tabpanel" hidden>
+                    <div class="card">
+                        <header class="card-header">
+                            <h3 data-i18n="bamt.batchUpdate.source.title">從主程式載入 Mods</h3>
+                            <span class="card-hint" data-i18n="bamt.batchUpdate.source.hint">選擇要更新的 Mod 檔案</span>
+                        </header>
+                        <div class="batch-controls">
+                            <button class="primary-btn" id="load-mods-btn" type="button" data-i18n="bamt.batchUpdate.loadMods">載入 Mod 清單</button>
+                            <div class="batch-actions">
+                                <button class="secondary-btn" id="select-all-batch" type="button" data-i18n="bamt.batchUpdate.selectAll">全選</button>
+                                <button class="secondary-btn" id="select-none-batch" type="button" data-i18n="bamt.batchUpdate.selectNone">全不選</button>
+                            </div>
+                        </div>
+                        <div class="mod-list-container">
+                            <div id="mod-list-empty" class="empty-state" data-i18n="bamt.batchUpdate.emptyState">尚未載入任何 Mod，請點擊「載入 Mod 清單」</div>
+                            <div id="mod-list" class="mod-list" hidden>
+                                <!-- Mod 清單將動態生成 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <header class="card-header">
+                            <h3 data-i18n="bamt.batchUpdate.settings.title">批次處理設定</h3>
+                            <span class="card-hint" data-i18n="bamt.batchUpdate.settings.hint">設定自動搜尋和輸出選項</span>
+                        </header>
+                        <div class="batch-settings">
+                            <label class="checkbox-row">
+                                <input type="checkbox" id="auto-search-enabled" checked>
+                                <span data-i18n="bamt.batchUpdate.autoSearch">啟用自動搜尋對應檔案</span>
+                            </label>
+                            <label class="checkbox-row">
+                                <input type="checkbox" id="auto-output-name" checked>
+                                <span data-i18n="bamt.batchUpdate.autoOutputName">自動產生輸出檔名</span>
+                            </label>
+                            <label class="checkbox-row">
+                                <input type="checkbox" id="continue-on-error">
+                                <span data-i18n="bamt.batchUpdate.continueOnError">發生錯誤時繼續處理其他檔案</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <header class="card-header">
+                            <h3 data-i18n="bamt.batchUpdate.progress.title">處理進度</h3>
+                        </header>
+                        <div class="progress-container">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="batch-progress-fill" style="width: 0%"></div>
+                            </div>
+                            <div class="progress-text">
+                                <span id="batch-progress-text">準備就緒</span>
+                                <span id="batch-progress-count">0/0</span>
+                            </div>
+                        </div>
+                        <div class="batch-results" id="batch-results" hidden>
+                            <div class="result-summary">
+                                <span class="success-count" id="success-count">成功: 0</span>
+                                <span class="error-count" id="error-count">失敗: 0</span>
+                                <span class="skip-count" id="skip-count">略過: 0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="action-row">
+                        <button class="secondary-btn" id="open-batch-output-folder" type="button" data-i18n="bamt.actions.openOutput">開啟輸出資料夾</button>
+                        <div class="action-group">
+                            <button class="ghost-btn" id="reset-batch" type="button" data-i18n="bamt.batchUpdate.reset">重設</button>
+                            <button class="primary-btn" id="run-batch-update" type="button" data-i18n="bamt.batchUpdate.runBatch" disabled>開始批次更新</button>
                         </div>
                     </div>
                 </section>

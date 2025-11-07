@@ -7,6 +7,8 @@ A simple Blue Archive Mod manager supporting multi-language (Traditional Chinese
 - One-click launch for Blue Archive (Steam version)
 - Drag & drop/select mod files, enable/disable, delete
 - Auto-detect game path, manual selection also available
+- **Sortable mod table**: Click on column headers (Character, File name, Mod name, Date) to sort mods
+- **Auto-search in BAMT**: When you select an old mod file, BAMT automatically triggers the search function to find corresponding new resource files
 
 ![alt text](image.png)
 
@@ -31,6 +33,8 @@ npm start
 2. Click "Select Mod File" to add .bundle files (multi-select supported).
 3. You can enable/disable/delete mods, and apply or restore them.
 4. Click "Launch Game" to start Blue Archive via Steam.
+5. **Sorting mods**: Click on any column header (Character, File name, Mod name, Date) to sort mods in ascending/descending order.
+6. **BAMT auto-search**: When using BAMT, simply select your old mod file and the tool will automatically search for the corresponding new game files.
 
 ## Notes
 - The ModBundle directory is only created at `%APPDATA%/Blue-Archive-Mod-Loader/ModBundle`. Do not move it manually.

@@ -21,10 +21,10 @@
   "game_bundle_path_label": "Game Bundle Path",
   "path_not_generated": "Path could not be generated.",
   "mod_table_header_enabled": "Enabled",
-  "mod_table_header_filename": "File Name",
-  "mod_table_header_character": "Character",
-  "mod_table_header_modname": "Mod Name",
-  "mod_table_header_installed_date": "Installation Date",
+  "mod_table_header_filename": "Filename (Click to sort)",
+  "mod_table_header_character": "Character (Click to sort)",
+  "mod_table_header_modname": "Mod Name (Click to sort)",
+  "mod_table_header_date": "Install Date (Click to sort)",
   "mod_table_header_actions": "Actions",
   "no_mods_installed": "No mods installed yet. Click 'Select Mod File' to add one.",
   "delete_mod": "Delete Mod",
@@ -143,7 +143,8 @@
     },
     "tabs": {
       "modUpdate": "Mod Update",
-      "pngReplace": "PNG Replacement"
+      "batchUpdate": "Batch Update",
+      "pngReplace": "PNG Replace"
     },
     "modUpdate": {
       "oldMod": {
@@ -163,6 +164,28 @@
         "hint": "Specify the filename used when overwriting",
         "placeholder": "Output filename (defaults to the target bundle name)"
       }
+    },
+    "batchUpdate": {
+      "source": {
+        "title": "Load Mods from Main App",
+        "hint": "Select Mod files to update"
+      },
+      "settings": {
+        "title": "Batch Processing Settings",
+        "hint": "Configure auto-search and output options"
+      },
+      "progress": {
+        "title": "Processing Progress"
+      },
+      "loadMods": "Load Mod List",
+      "selectAll": "Select All",
+      "selectNone": "Select None",
+      "emptyState": "No Mods loaded. Click 'Load Mod List' to begin",
+      "autoSearch": "Enable automatic target file search",
+      "autoOutputName": "Auto-generate output filenames",
+      "continueOnError": "Continue processing other files on error",
+      "runBatch": "Start Batch Update",
+      "reset": "Reset"
     },
     "pngReplace": {
       "bundle": {
@@ -192,6 +215,8 @@
       "outputDirSynced": "Output directory synchronized: {{path}}",
       "outputDirLoadError": "Failed to load default output directory: {{error}}",
       "selectedOldMod": "Selected legacy mod: {{name}}",
+      "autoTriggeringSearch": "Auto-triggering search function, looking for corresponding new resource files...",
+      "autoSearchNeedsGamePath": "Auto-search requires game resource path to be set first. Please configure the game resource in \"Shared Paths\".",
       "selectedTargetBundle": "Selected target bundle: {{name}}",
       "selectedBundle": "Selected bundle: {{name}}",
       "selectedPngFolder": "Selected PNG folder: {{name}}",
@@ -226,6 +251,8 @@
       "interfaceReady": "BAMT interface is ready.",
       "refreshModsTriggered": "Default output directory detected; requesting main window to reload mods.",
       "refreshModsFailed": "Failed to notify main window to reload mods: {{error}}",
+      "batchRefreshingMods": "Batch update completed, notifying main application to refresh mod list...",
+      "batchRefreshModsFailed": "Failed to notify main application to refresh mod list after batch update: {{error}}",
       "pythonFound": "Python environment detected via '{{command}}' ({{version}})",
       "pythonMissing": "Python runtime not found. Please install Python 3.x to use toolkit features.",
       "pythonCheckFailed": "Failed to check Python environment: {{error}}",

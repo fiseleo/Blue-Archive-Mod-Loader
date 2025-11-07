@@ -21,10 +21,10 @@
   "game_bundle_path_label": "游戏资源包路径",
   "path_not_generated": "无法生成路径。",
   "mod_table_header_enabled": "启用",
-  "mod_table_header_filename": "文件名",
-  "mod_table_header_modname": "Mod 名称",
-  "mod_table_header_character": "角色",
-  "mod_table_header_installed_date": "安装日期",
+  "mod_table_header_filename": "文件名 (点击排序)",
+  "mod_table_header_modname": "Mod 名称 (点击排序)",
+  "mod_table_header_character": "角色 (点击排序)",
+  "mod_table_header_date": "安装日期 (点击排序)",
   "mod_table_header_actions": "操作",
   "no_mods_installed": "尚未安装任何 Mod，点击“选择 Mod 文件”以添加。",
   "delete_mod": "删除 Mod",
@@ -143,6 +143,7 @@
     },
     "tabs": {
       "modUpdate": "Mod 更新",
+      "batchUpdate": "批量更新",
       "pngReplace": "PNG 替换"
     },
     "modUpdate": {
@@ -163,6 +164,28 @@
         "hint": "指定覆盖时使用的输出文件名",
         "placeholder": "输出文件名（默认沿用目标文件名）"
       }
+    },
+    "batchUpdate": {
+      "source": {
+        "title": "从主程序载入 Mods",
+        "hint": "选择要更新的 Mod 文件"
+      },
+      "settings": {
+        "title": "批量处理设置",
+        "hint": "设置自动搜索和输出选项"
+      },
+      "progress": {
+        "title": "处理进度"
+      },
+      "loadMods": "载入 Mod 清单",
+      "selectAll": "全选",
+      "selectNone": "全不选",
+      "emptyState": "尚未载入任何 Mod，请点击「载入 Mod 清单」",
+      "autoSearch": "启用自动搜索对应文件",
+      "autoOutputName": "自动生成输出文件名",
+      "continueOnError": "发生错误时继续处理其他文件",
+      "runBatch": "开始批量更新",
+      "reset": "重设"
     },
     "pngReplace": {
       "bundle": {
@@ -192,6 +215,8 @@
       "outputDirSynced": "已同步输出文件夹：{{path}}",
       "outputDirLoadError": "读取默认输出文件夹失败：{{error}}",
       "selectedOldMod": "已选择旧版 Mod：{{name}}",
+      "autoTriggeringSearch": "已自动触发搜索功能，正在寻找对应的新版资源文件...",
+      "autoSearchNeedsGamePath": "自动搜索需要先设定游戏资源路径，请先设定「共享路径」中的游戏资源。",
       "selectedTargetBundle": "已选择目标资源：{{name}}",
       "selectedBundle": "已选择 bundle 文件：{{name}}",
       "selectedPngFolder": "已选择 PNG 文件夹：{{name}}",
@@ -226,6 +251,8 @@
       "interfaceReady": "BAMT 界面已就绪。",
       "refreshModsTriggered": "检测到默认输出文件夹，已请求主窗口重新载入 Mod 列表。",
       "refreshModsFailed": "通知主窗口重新载入 Mod 时失败：{{error}}",
+      "batchRefreshingMods": "批次更新完成，正在通知主程序更新 Mod 列表...",
+      "batchRefreshModsFailed": "批次更新后，通知主程序更新 Mod 列表失败：{{error}}",
       "pythonFound": "检测到 Python 环境（指令：{{command}}，版本：{{version}}）",
       "pythonMissing": "未找到 Python 运行环境，请安装 Python 3.x 以使用此工具。",
       "pythonCheckFailed": "检查 Python 环境时出现错误：{{error}}",

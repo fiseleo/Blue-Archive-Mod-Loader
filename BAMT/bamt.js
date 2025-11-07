@@ -59,6 +59,17 @@
 			modUpdate: null,
 			pngReplace: null,
 		},
+		// 批次更新狀態
+		batchMods: [],
+		batchProgress: {
+			current: 0,
+			total: 0,
+			results: {
+				success: 0,
+				error: 0,
+				skipped: 0
+			}
+		}
 	};
 
 	const CACHE_SUBDIR = '.bamt-cache';
@@ -93,6 +104,25 @@
 	const logCounter = document.getElementById('log-counter');
 	const statusIndicator = document.getElementById('global-status');
 	const resetLogBtn = document.getElementById('reset-log-btn');
+	
+	// 批次更新相關元素
+	const loadModsBtn = document.getElementById('load-mods-btn');
+	const selectAllBatchBtn = document.getElementById('select-all-batch');
+	const selectNoneBatchBtn = document.getElementById('select-none-batch');
+	const modListEmpty = document.getElementById('mod-list-empty');
+	const modList = document.getElementById('mod-list');
+	const autoSearchEnabled = document.getElementById('auto-search-enabled');
+	const autoOutputName = document.getElementById('auto-output-name');
+	const continueOnError = document.getElementById('continue-on-error');
+	const batchProgressFill = document.getElementById('batch-progress-fill');
+	const batchProgressText = document.getElementById('batch-progress-text');
+	const batchProgressCount = document.getElementById('batch-progress-count');
+	const batchResults = document.getElementById('batch-results');
+	const successCount = document.getElementById('success-count');
+	const errorCount = document.getElementById('error-count');
+	const skipCount = document.getElementById('skip-count');
+	const resetBatchBtn = document.getElementById('reset-batch');
+	const runBatchUpdateBtn = document.getElementById('run-batch-update');
 
 	let logLineCount = 0;
 
@@ -399,10 +429,13 @@
 
 	function extractAutoPrefix(filename) {
 		if (!filename) return '';
+		
 		const match = filename.match(/^(.*?)(20\d{2}-\d{2}-\d{2})/);
 		if (match && match[1]) {
-			return match[1].trim();
+			const prefix = match[1].trim();
+			return prefix;
 		}
+		
 		return filename.replace(/\.bundle$/i, '');
 	}
 
@@ -763,7 +796,8 @@
 			if (!modOutputNameInput.value.trim()) {
 				modOutputNameInput.value = best.name;
 			}
-			state.modOutputName = modOutputNameInput.value.trim();
+			// 確保 state 與 UI 同步
+			syncOutputNameWithUI();
 			if (ranked.length > 1) {
 				log(t('bamt.log.autoFindMultiple', { count: ranked.length, name: best.name }));
 			} else {
@@ -806,6 +840,15 @@
 		}
 	}
 
+	function syncOutputNameWithUI() {
+		if (modOutputNameInput) {
+			const currentValue = modOutputNameInput.value.trim();
+			state.modOutputName = currentValue;
+			return currentValue;
+		}
+		return state.modOutputName;
+	}
+
 	function updateFileSelection(target, files) {
 		if (!files || files.length === 0) {
 			return;
@@ -822,14 +865,28 @@
 				state.oldModFile = file;
 				autoFindPrefixInput.value = extractAutoPrefix(fileName);
 				log(t('bamt.log.selectedOldMod', { name: fileName }));
+				
+				// 自動觸發 auto-search 功能
+				setTimeout(() => {
+					const autoFindButton = document.getElementById('auto-find-btn');
+					if (autoFindButton) {
+						if (state.gameResourcePath) {
+							log(t('bamt.log.autoTriggeringSearch'), 'info');
+							runAutoFind(autoFindButton);
+						} else {
+							log(t('bamt.log.autoSearchNeedsGamePath'), 'warning');
+						}
+					}
+				}, 100);
 				break;
 			case 'new-bundle':
 				state.newBundle = fullPath;
 				state.newBundleFile = file;
 				if (!modOutputNameInput.value.trim()) {
 					modOutputNameInput.value = fileName;
-					state.modOutputName = fileName;
 				}
+				// 確保 state 與 UI 同步
+				syncOutputNameWithUI();
 				log(t('bamt.log.selectedTargetBundle', { name: fileName }));
 				break;
 			case 'png-bundle':
@@ -1192,7 +1249,7 @@
 		});
 
 		modOutputNameInput.addEventListener('input', (event) => {
-			state.modOutputName = event.target.value.trim();
+			syncOutputNameWithUI();
 		});
 
 		resetLogBtn.addEventListener('click', clearLog);
@@ -1241,13 +1298,431 @@
 		bindActions();
 		bindOptions();
 		enablePathDropZones();
+		setupBatchEventListeners();
 		registerGamePathListener();
 		registerCliLogListener();
 		clearLog();
+		
+		// 確保 UI 與 state 初始同步
+		syncOutputNameWithUI();
+		
 		await syncGameResourcePath();
 		await syncOutputDirPath();
 		log(t('bamt.log.interfaceReady'));
 		await checkPythonEnvironment();
+	}
+
+	// ===== 批次更新功能 =====
+
+	async function loadModsFromMainApp() {
+		try {
+			log(t('bamt.batchUpdate.loadingMods', 'Loading mods from main application...'), 'info');
+			
+			if (!ipcRenderer) {
+				log('IPC renderer not available. Cannot load mods from main app.', 'error');
+				return;
+			}
+
+			// 透過 IPC 從主程式獲取 Mod 清單
+			const mods = await ipcRenderer.invoke('mods:get');
+			
+			if (!mods || mods.length === 0) {
+				log(t('bamt.batchUpdate.noModsFound', 'No mods found in main application.'), 'warning');
+				return;
+			}
+
+			state.batchMods = mods.map(mod => ({
+				...mod,
+				selected: mod.enabled || false,
+				status: 'pending',
+				progress: 0,
+				error: null
+			}));
+
+			renderModList();
+			updateBatchUI();
+			log(t('bamt.batchUpdate.modsLoaded', `Loaded ${mods.length} mods from main application.`), 'success');
+			
+		} catch (error) {
+			console.error('Error loading mods:', error);
+			log(t('bamt.batchUpdate.loadError', `Error loading mods: ${error.message}`), 'error');
+		}
+	}
+
+	function renderModList() {
+		if (!state.batchMods || state.batchMods.length === 0) {
+			modListEmpty.hidden = false;
+			modList.hidden = true;
+			return;
+		}
+
+		modListEmpty.hidden = true;
+		modList.hidden = false;
+		
+		modList.innerHTML = '';
+		
+		state.batchMods.forEach((mod, index) => {
+			const modItem = document.createElement('div');
+			modItem.className = 'mod-item';
+			
+			modItem.innerHTML = `
+				<input type="checkbox" class="mod-checkbox" ${mod.selected ? 'checked' : ''} data-mod-index="${index}">
+				<div class="mod-info">
+					<div class="mod-name">${mod.modName || mod.fileName}</div>
+					<div class="mod-file">${mod.fileName}</div>
+				</div>
+				<div class="mod-status status-${mod.status}" id="mod-status-${index}">
+					${getStatusText(mod.status)}
+				</div>
+			`;
+			
+			modList.appendChild(modItem);
+		});
+
+		// 添加事件監聽
+		modList.querySelectorAll('.mod-checkbox').forEach(checkbox => {
+			checkbox.addEventListener('change', (e) => {
+				const index = parseInt(e.target.dataset.modIndex);
+				state.batchMods[index].selected = e.target.checked;
+				updateBatchUI();
+			});
+		});
+	}
+
+	function getStatusText(status) {
+		switch (status) {
+			case 'pending': return '等待中';
+			case 'processing': return '處理中...';
+			case 'success': return '完成';
+			case 'error': return '錯誤';
+			case 'skipped': return '略過';
+			default: return '未知';
+		}
+	}
+
+	function updateBatchUI() {
+		const selectedMods = state.batchMods.filter(mod => mod.selected);
+		runBatchUpdateBtn.disabled = selectedMods.length === 0;
+		runBatchUpdateBtn.textContent = selectedMods.length > 0 
+			? `${t('bamt.batchUpdate.runBatch')} (${selectedMods.length})`
+			: t('bamt.batchUpdate.runBatch');
+	}
+
+	function selectAllBatchMods(select = true) {
+		state.batchMods.forEach(mod => {
+			mod.selected = select;
+		});
+		
+		modList.querySelectorAll('.mod-checkbox').forEach(checkbox => {
+			checkbox.checked = select;
+		});
+		
+		updateBatchUI();
+	}
+
+	function updateBatchProgress() {
+		const { current, total, results } = state.batchProgress;
+		
+		if (total > 0) {
+			const percentage = Math.round((current / total) * 100);
+			batchProgressFill.style.width = `${percentage}%`;
+			batchProgressText.textContent = current < total 
+				? `正在處理第 ${current + 1} 個 Mod...`
+				: '處理完成';
+			batchProgressCount.textContent = `${current}/${total}`;
+		}
+
+		// 更新結果統計
+		successCount.textContent = `成功: ${results.success}`;
+		errorCount.textContent = `失敗: ${results.error}`;
+		skipCount.textContent = `略過: ${results.skipped}`;
+
+		if (current > 0) {
+			batchResults.hidden = false;
+		}
+	}
+
+	async function runBatchUpdate() {
+		const selectedMods = state.batchMods.filter(mod => mod.selected);
+		
+		if (selectedMods.length === 0) {
+			log('No mods selected for batch update.', 'warning');
+			return;
+		}
+
+		// 重置進度狀態
+		state.batchProgress = {
+			current: 0,
+			total: selectedMods.length,
+			results: { success: 0, error: 0, skipped: 0 }
+		};
+
+		// 重置所有選中的 mod 狀態
+		selectedMods.forEach(mod => {
+			mod.status = 'pending';
+			mod.error = null;
+		});
+
+		renderModList();
+		updateBatchProgress();
+
+		runBatchUpdateBtn.disabled = true;
+		resetBatchBtn.disabled = true;
+
+		log(`開始批次更新 ${selectedMods.length} 個 Mod...`, 'info');
+
+		for (let i = 0; i < selectedMods.length; i++) {
+			const mod = selectedMods[i];
+			const modIndex = state.batchMods.findIndex(m => m.id === mod.id);
+			
+			try {
+				// 更新當前處理的 mod 狀態
+				mod.status = 'processing';
+				state.batchMods[modIndex].status = 'processing';
+				updateModStatus(modIndex, 'processing');
+				
+				state.batchProgress.current = i;
+				updateBatchProgress();
+
+				log(`處理 Mod: ${mod.modName || mod.fileName}`, 'info');
+
+				// 構建 mod 檔案路徑
+				const modPath = getModFilePath(mod);
+				
+				if (!modPath || !fs?.existsSync?.(modPath)) {
+					throw new Error(`Mod 檔案不存在: ${modPath}`);
+				}
+
+				// 如果啟用自動搜尋，嘗試找到對應的目標檔案
+				let targetBundle = null;
+				if (autoSearchEnabled.checked && state.gameResourcePath) {
+					const searchResult = await performAutoFindForMod(modPath);
+					if (searchResult?.best) {
+						targetBundle = searchResult.best.path;
+						log(`自動找到目標檔案: ${searchResult.best.name}`, 'success');
+					} else {
+						log(`無法自動找到對應的目標檔案: ${mod.fileName}`, 'warning');
+						if (!continueOnError.checked) {
+							throw new Error('Auto-search failed and continue on error is disabled');
+						}
+						mod.status = 'skipped';
+						state.batchMods[modIndex].status = 'skipped';
+						state.batchProgress.results.skipped++;
+						updateModStatus(modIndex, 'skipped');
+						continue;
+					}
+				}
+
+				if (!targetBundle) {
+					if (!continueOnError.checked) {
+						throw new Error('No target bundle specified');
+					}
+					mod.status = 'skipped';
+					state.batchMods[modIndex].status = 'skipped';
+					state.batchProgress.results.skipped++;
+					updateModStatus(modIndex, 'skipped');
+					continue;
+				}
+
+				// 執行 B2B 更新
+				const outputName = autoOutputName.checked 
+					? `updated_${mod.fileName}`
+					: mod.fileName;
+
+				const success = await processSingleModUpdate(modPath, targetBundle, outputName);
+				
+				if (success) {
+					mod.status = 'success';
+					state.batchMods[modIndex].status = 'success';
+					state.batchProgress.results.success++;
+					updateModStatus(modIndex, 'success');
+					log(`成功更新: ${mod.fileName}`, 'success');
+				} else {
+					throw new Error('Processing failed');
+				}
+
+			} catch (error) {
+				console.error(`Error processing mod ${mod.fileName}:`, error);
+				mod.status = 'error';
+				mod.error = error.message;
+				state.batchMods[modIndex].status = 'error';
+				state.batchProgress.results.error++;
+				updateModStatus(modIndex, 'error');
+				
+				log(`處理失敗: ${mod.fileName} - ${error.message}`, 'error');
+				
+				if (!continueOnError.checked) {
+					break;
+				}
+			}
+		}
+
+		state.batchProgress.current = selectedMods.length;
+		updateBatchProgress();
+
+		runBatchUpdateBtn.disabled = false;
+		resetBatchBtn.disabled = false;
+
+		const { success, error, skipped } = state.batchProgress.results;
+		log(`批次更新完成！成功: ${success}, 失敗: ${error}, 略過: ${skipped}`, 'info');
+		
+		// 如果有成功處理的 mod 且使用預設輸出目錄，則通知主程式刷新 mod table
+		if (success > 0 && isUsingDefaultOutputDir()) {
+			log(t('bamt.log.batchRefreshingMods'), 'info');
+			try {
+				await notifyModsRefresh();
+			} catch (error) {
+				log(t('bamt.log.batchRefreshModsFailed', { error: error.message }), 'warning');
+			}
+		}
+	}
+
+	function updateModStatus(modIndex, status) {
+		const statusElement = document.getElementById(`mod-status-${modIndex}`);
+		if (statusElement) {
+			statusElement.className = `mod-status status-${status}`;
+			statusElement.textContent = getStatusText(status);
+		}
+	}
+
+	function getModFilePath(mod) {
+		// 根據主程式的 Mod 存放邏輯構建檔案路徑
+		// 這裡需要根據實際的檔案存放位置來調整
+		if (os && path) {
+			const appDataPath = os.homedir();
+			const modBundlePath = path.join(appDataPath, 'AppData', 'Roaming', 'Blue-Archive-Mod-Loader', 'ModBundle');
+			return path.join(modBundlePath, mod.fileName);
+		}
+		return null;
+	}
+
+	async function performAutoFindForMod(modPath) {
+		try {
+			// 使用相同的前綴提取邏輯
+			if (!path) {
+				log('Path module 不可用', 'error');
+				return null;
+			}
+			
+			const fileName = path.basename(modPath);
+			const prefix = extractAutoPrefix(fileName);
+			
+			if (!prefix) {
+				log(`無法提取前綴: ${fileName}`, 'warning');
+				return null;
+			}
+			
+			// 暫時設定 state.oldMod 以供 performAutoFindSearch 使用
+			const originalOldMod = state.oldMod;
+			state.oldMod = modPath;
+			
+			try {
+				const result = await performAutoFindSearch(prefix);
+				return result;
+			} finally {
+				// 恢復原始狀態
+				state.oldMod = originalOldMod;
+			}
+		} catch (error) {
+			console.error('Auto-find error for mod:', modPath, error);
+			log(`自動搜尋發生錯誤: ${error.message}`, 'error');
+			return null;
+		}
+	}
+
+	async function processSingleModUpdate(oldModPath, newBundlePath, outputName) {
+		try {
+			if (!ipcRenderer || typeof ipcRenderer.invoke !== 'function') {
+				log('IPC Renderer 不可用', 'error');
+				return false;
+			}
+
+			// 構建 payload，與 runModUpdateFlow 相同的格式
+			const payload = {
+				oldMod: oldModPath,
+				newBundle: newBundlePath,
+				outputDir: state.outputDirPath || state.defaultOutputDir,
+				outputName: outputName,
+				replaceTexture: !!options.replaceTexture,
+				replaceTextasset: !!options.replaceTextasset,
+				replaceMesh: !!options.replaceMesh,
+				lang: i18next.language || 'en',
+			};
+
+			log(`開始處理: ${getFileNameFromPath(oldModPath)} -> ${getFileNameFromPath(newBundlePath)}`);
+			
+			const response = await ipcRenderer.invoke('bamt:runModUpdate', payload);
+			
+			if (!response || !response.ok) {
+				const errorMsg = (response && response.error) || '處理失敗';
+				log(`處理錯誤: ${errorMsg}`, 'error');
+				return false;
+			}
+
+			const result = response.result || {};
+			const replaced = typeof result.replaced === 'number' ? result.replaced : 0;
+			const skipped = typeof result.skipped === 'number' ? result.skipped : 0;
+			
+			log(`處理完成: 替換 ${replaced} 個檔案，跳過 ${skipped} 個檔案`, 'success');
+			return true;
+
+		} catch (error) {
+			console.error('Single mod update error:', error);
+			log(`單一模組更新錯誤: ${error.message}`, 'error');
+			return false;
+		}
+	}
+
+	function resetBatchUpdate() {
+		state.batchMods = [];
+		state.batchProgress = {
+			current: 0,
+			total: 0,
+			results: { success: 0, error: 0, skipped: 0 }
+		};
+
+		modListEmpty.hidden = false;
+		modList.hidden = true;
+		batchResults.hidden = true;
+		
+		batchProgressFill.style.width = '0%';
+		batchProgressText.textContent = '準備就緒';
+		batchProgressCount.textContent = '0/0';
+		
+		runBatchUpdateBtn.disabled = true;
+		log('已重設批次更新狀態', 'info');
+	}
+
+	// ===== 事件綁定 =====
+
+	function setupBatchEventListeners() {
+		if (loadModsBtn) {
+			loadModsBtn.addEventListener('click', loadModsFromMainApp);
+		}
+
+		if (selectAllBatchBtn) {
+			selectAllBatchBtn.addEventListener('click', () => selectAllBatchMods(true));
+		}
+
+		if (selectNoneBatchBtn) {
+			selectNoneBatchBtn.addEventListener('click', () => selectAllBatchMods(false));
+		}
+
+		if (runBatchUpdateBtn) {
+			runBatchUpdateBtn.addEventListener('click', runBatchUpdate);
+		}
+
+		if (resetBatchBtn) {
+			resetBatchBtn.addEventListener('click', resetBatchUpdate);
+		}
+
+		// 批次更新輸出資料夾按鈕
+		const openBatchOutputFolderBtn = document.getElementById('open-batch-output-folder');
+		if (openBatchOutputFolderBtn) {
+			openBatchOutputFolderBtn.addEventListener('click', () => {
+				handleOpenFolder(state.outputDirPath);
+			});
+		}
 	}
 
 	window.addEventListener('DOMContentLoaded', async () => {
