@@ -36,7 +36,6 @@
     "files": [
       "**/*",
       "!dist/**",
-      "!node_modules/**",
       "!.git/**",
       "!*.md"
     ],
