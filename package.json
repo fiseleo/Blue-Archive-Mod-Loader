@@ -11,7 +11,7 @@
   },
   "scripts": {
     "start": "electron .",
-    "build": "cross-env PYTHONUTF8=1 node obfuscate.js && node copy-assets.js && electron-builder",
+    "build": "cross-env PYTHONUTF8=1 electron-builder",
     "dist": "npm run build"
   },
   "dependencies": {
@@ -24,20 +24,21 @@
   "devDependencies": {
     "cross-env": "^7.0.3",
     "electron": "^37.2.0",
-    "electron-builder": "^26.0.12",
-    "fs-extra": "^11.3.0",
-    "javascript-obfuscator": "^4.1.1"
+    "electron-builder": "^26.0.12"
   },
   "build": {
     "appId": "com.fiseleo.bluearchivemodloader",
     "productName": "Blue Archive Mod Loader",
     "copyright": "Copyright © 2025 ${author}",
     "directories": {
-      "output": "release",
-      "app": "dist"
+      "output": "release"
     },
     "files": [
-      "**/*"
+      "**/*",
+      "!dist/**",
+      "!node_modules/**",
+      "!.git/**",
+      "!*.md"
     ],
     "asarUnpack": [
       "BAMT/**"
