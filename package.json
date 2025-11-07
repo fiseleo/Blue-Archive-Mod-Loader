@@ -1,6 +1,6 @@
 {
   "name": "blue-archive-mod-loader",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Blue Archive Mod Loader is a tool for managing mods for the game Blue Archive.",
   "main": "main.js",
   "author": "fiseleo",
