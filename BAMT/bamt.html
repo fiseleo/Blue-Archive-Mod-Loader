@@ -56,6 +56,10 @@
                         <input type="checkbox" id="opt-replace-mesh" />
                         <span data-i18n="bamt.options.replaceMesh"></span>
                     </label>
+                    <label class="checkbox">
+                        <input type="checkbox" id="opt-delete-old-mod" checked />
+                        <span data-i18n="bamt.options.deleteOldMod"></span>
+                    </label>
                 </section>
             </aside>
 
@@ -153,6 +157,10 @@
                             <label class="checkbox-row">
                                 <input type="checkbox" id="continue-on-error">
                                 <span data-i18n="bamt.batchUpdate.continueOnError">發生錯誤時繼續處理其他檔案</span>
+                            </label>
+                            <label class="checkbox-row">
+                                <input type="checkbox" id="delete-old-mods" checked>
+                                <span data-i18n="bamt.batchUpdate.deleteOldMods">處理成功後自動刪除舊版 Mod 檔案</span>
                             </label>
                         </div>
                     </div>

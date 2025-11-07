@@ -78,6 +78,7 @@
 		replaceTexture: true,
 		replaceTextasset: false,
 		replaceMesh: false,
+		deleteOldMod: true,
 	};
 
 	const captionConfig = {
@@ -114,6 +115,7 @@
 	const autoSearchEnabled = document.getElementById('auto-search-enabled');
 	const autoOutputName = document.getElementById('auto-output-name');
 	const continueOnError = document.getElementById('continue-on-error');
+	const deleteOldMods = document.getElementById('delete-old-mods');
 	const batchProgressFill = document.getElementById('batch-progress-fill');
 	const batchProgressText = document.getElementById('batch-progress-text');
 	const batchProgressCount = document.getElementById('batch-progress-count');
@@ -130,6 +132,7 @@
 		replaceTexture: 'bamt.options.replaceTexture',
 		replaceTextasset: 'bamt.options.replaceTextasset',
 		replaceMesh: 'bamt.options.replaceMesh',
+		deleteOldMod: 'bamt.options.deleteOldMod',
 	};
 
 	const SUPPORTED_LANGS = ['en', 'zh-TW', 'zh-CN'];
@@ -1032,6 +1035,48 @@
 		}
 	}
 
+	async function findAndDeleteOldMod(oldModPath) {
+		try {
+			if (!ipcRenderer || !oldModPath) {
+				return false;
+			}
+
+			// 獲取所有 mod 清單來尋找對應的 mod
+			const allMods = await ipcRenderer.invoke('mods:get');
+			if (!allMods || allMods.length === 0) {
+				return false;
+			}
+
+			// 嘗試通過檔案路徑找到對應的 mod
+			const oldModFileName = getFileNameFromPath(oldModPath);
+			const matchedMod = allMods.find(mod => {
+				if (mod.path && normalizePath(mod.path) === normalizePath(oldModPath)) {
+					return true;
+				}
+				if (mod.fileName === oldModFileName) {
+					return true;
+				}
+				if (mod.actualFileName === oldModFileName) {
+					return true;
+				}
+				return false;
+			});
+
+			if (matchedMod && matchedMod.id) {
+				await ipcRenderer.invoke('mods:delete', matchedMod.id);
+				log(t('bamt.log.deletedOldMod', { fileName: oldModFileName }), 'info');
+				return true;
+			} else {
+				log(t('bamt.log.oldModNotFound', { fileName: oldModFileName }), 'warning');
+				return false;
+			}
+		} catch (error) {
+			console.error('Failed to find and delete old mod:', error);
+			log(t('bamt.log.deleteOldModFailed', { error: error.message }), 'warning');
+			return false;
+		}
+	}
+
 	async function runModUpdateFlow(triggerButton) {
 		const prerequisites = [
 			ensurePath(state.oldMod, 'bamt.validation.oldMod'),
@@ -1130,6 +1175,17 @@
 			};
 			
 			log(t('bamt.log.modUpdateComplete', { replaced, skipped, output: outputPath }), 'success');
+			
+			// 嘗試刪除舊的 mod 檔案（如果啟用了此選項）
+			if (options.deleteOldMod) {
+				try {
+					await findAndDeleteOldMod(oldModPath);
+				} catch (deleteError) {
+					// 刪除失敗不應該影響主要流程，只記錄警告
+					console.error('Delete old mod failed:', deleteError);
+				}
+			}
+			
 			if (isUsingDefaultOutputDir()) {
 				await notifyModsRefresh();
 			}
@@ -1260,6 +1316,7 @@
 			'opt-replace-texture': 'replaceTexture',
 			'opt-replace-textasset': 'replaceTextasset',
 			'opt-replace-mesh': 'replaceMesh',
+			'opt-delete-old-mod': 'deleteOldMod',
 		};
 
 		Object.entries(optionMap).forEach(([checkboxId, optionKey]) => {
@@ -1537,6 +1594,19 @@
 					state.batchProgress.results.success++;
 					updateModStatus(modIndex, 'success');
 					log(`成功更新: ${mod.fileName}`, 'success');
+					
+					// 嘗試刪除舊的 mod 檔案（如果啟用了此選項）
+					if (deleteOldMods && deleteOldMods.checked) {
+						try {
+							if (ipcRenderer && mod.id) {
+								await ipcRenderer.invoke('mods:delete', mod.id);
+								log(t('bamt.log.batchDeletingOldMod', { fileName: mod.fileName }), 'info');
+							}
+						} catch (deleteError) {
+							console.error(`Failed to delete old mod ${mod.fileName}:`, deleteError);
+							log(t('bamt.log.batchDeleteOldModFailed', { fileName: mod.fileName, error: deleteError.message }), 'warning');
+						}
+					}
 				} else {
 					throw new Error('Processing failed');
 				}

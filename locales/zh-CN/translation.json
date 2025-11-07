@@ -139,7 +139,8 @@
       "title": "常规选项",
       "replaceTexture": "替换 Texture2D 资源",
       "replaceTextasset": "替换 TextAsset 资源",
-      "replaceMesh": "替换 Mesh 资源"
+      "replaceMesh": "替换 Mesh 资源",
+      "deleteOldMod": "更新成功后自动删除旧版 Mod 文件"
     },
     "tabs": {
       "modUpdate": "Mod 更新",
@@ -184,6 +185,7 @@
       "autoSearch": "启用自动搜索对应文件",
       "autoOutputName": "自动生成输出文件名",
       "continueOnError": "发生错误时继续处理其他文件",
+      "deleteOldMods": "处理成功后自动删除旧版 Mod 文件",
       "runBatch": "开始批量更新",
       "reset": "重设"
     },
@@ -253,6 +255,11 @@
       "refreshModsFailed": "通知主窗口重新载入 Mod 时失败：{{error}}",
       "batchRefreshingMods": "批次更新完成，正在通知主程序更新 Mod 列表...",
       "batchRefreshModsFailed": "批次更新后，通知主程序更新 Mod 列表失败：{{error}}",
+      "batchDeletingOldMod": "已删除旧版 mod：{{fileName}}",
+      "batchDeleteOldModFailed": "删除旧版 mod 失败：{{fileName}} - {{error}}",
+      "deletedOldMod": "已删除旧版 mod：{{fileName}}",
+      "oldModNotFound": "在 mod 列表中找不到对应的旧版 mod：{{fileName}}",
+      "deleteOldModFailed": "删除旧版 mod 时发生错误：{{error}}",
       "pythonFound": "检测到 Python 环境（指令：{{command}}，版本：{{version}}）",
       "pythonMissing": "未找到 Python 运行环境，请安装 Python 3.x 以使用此工具。",
       "pythonCheckFailed": "检查 Python 环境时出现错误：{{error}}",

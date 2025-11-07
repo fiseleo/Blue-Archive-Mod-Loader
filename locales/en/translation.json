@@ -139,7 +139,8 @@
       "title": "General Options",
       "replaceTexture": "Replace Texture2D assets",
       "replaceTextasset": "Replace TextAsset resources",
-      "replaceMesh": "Replace Mesh resources"
+      "replaceMesh": "Replace Mesh resources",
+      "deleteOldMod": "Automatically delete old mod file after successful update"
     },
     "tabs": {
       "modUpdate": "Mod Update",
@@ -183,7 +184,8 @@
       "emptyState": "No Mods loaded. Click 'Load Mod List' to begin",
       "autoSearch": "Enable automatic target file search",
       "autoOutputName": "Auto-generate output filenames",
-      "continueOnError": "Continue processing other files on error",
+      "continueOnError": "Continue processing other files when errors occur",
+      "deleteOldMods": "Automatically delete old mod files after successful processing",
       "runBatch": "Start Batch Update",
       "reset": "Reset"
     },
@@ -253,6 +255,11 @@
       "refreshModsFailed": "Failed to notify main window to reload mods: {{error}}",
       "batchRefreshingMods": "Batch update completed, notifying main application to refresh mod list...",
       "batchRefreshModsFailed": "Failed to notify main application to refresh mod list after batch update: {{error}}",
+      "batchDeletingOldMod": "Deleted old mod: {{fileName}}",
+      "batchDeleteOldModFailed": "Failed to delete old mod: {{fileName}} - {{error}}",
+      "deletedOldMod": "Deleted old mod: {{fileName}}",
+      "oldModNotFound": "Could not find corresponding old mod in mod list: {{fileName}}",
+      "deleteOldModFailed": "Error occurred while deleting old mod: {{error}}",
       "pythonFound": "Python environment detected via '{{command}}' ({{version}})",
       "pythonMissing": "Python runtime not found. Please install Python 3.x to use toolkit features.",
       "pythonCheckFailed": "Failed to check Python environment: {{error}}",
