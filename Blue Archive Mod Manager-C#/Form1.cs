@@ -17,6 +17,7 @@ namespace Blue_Archive_Mod_Manager_C_
     public partial class Form1 : Form
     {
         private SettingsManager? _settingsManager;
+        private LocalizationManager? _localizationManager;
         private GamePathManager? _gamePathManager;
         private StudentIndexManager? _studentIndexManager;
         private ModManager? _modManager;
@@ -26,6 +27,11 @@ namespace Blue_Archive_Mod_Manager_C_
         {
             InitializeComponent();
             InitializeModules();
+            
+            var disclaimerMsg = _localizationManager?.T("disclaimer.message") ?? "This program is Blue Archive Mod Manager. Mods are unofficial assets. Use at your own risk.";
+            var disclaimerTitle = _localizationManager?.T("disclaimer.title") ?? "Disclaimer";
+            
+            MessageBox.Show(disclaimerMsg, disclaimerTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
             InitializeWebView();
         }
 
@@ -34,6 +40,7 @@ namespace Blue_Archive_Mod_Manager_C_
             try
             {
                 _settingsManager = new SettingsManager();
+                _localizationManager = new LocalizationManager();
                 _gamePathManager = new GamePathManager(_settingsManager);
                 _studentIndexManager = new StudentIndexManager(_settingsManager);
                 _modManager = new ModManager(_settingsManager, _studentIndexManager);
@@ -108,6 +115,51 @@ namespace Blue_Archive_Mod_Manager_C_
                 return null;
             });
 
+            _webBridge.RegisterHandler("getTranslations", async (payload) =>
+            {
+                try
+                {
+                    var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                    var translationsPath = Path.Combine(baseDir, "Web", "translations.json");
+                    if (!File.Exists(translationsPath)) return null;
+
+                    var json = await File.ReadAllTextAsync(translationsPath);
+                    var doc = JsonDocument.Parse(json);
+                    return doc.RootElement.Clone();
+                }
+                catch (Exception ex)
+                {
+                    return new { error = ex.Message };
+                }
+            });
+
+            _webBridge.RegisterHandler("findGamePathAuto", async (payload) =>
+            {
+                if (_gamePathManager == null)
+                    return new { error = "GamePathManager not initialized" };
+
+                try
+                {
+                    var gamePath = await _gamePathManager.FindGameExecutableAsync(async (status) =>
+                    {
+                        await _webBridge.SendNotificationAsync("gamePathStatus", new { status });
+                    });
+
+                    if (!string.IsNullOrEmpty(gamePath))
+                    {
+                        var gameDirectory = Path.GetDirectoryName(gamePath);
+                        var bundlePath = Path.Combine(gameDirectory, "BlueArchive_Data");
+                        return new { gamePath, gameBundlePath = bundlePath };
+                    }
+
+                    return new { error = "Game not found" };
+                }
+                catch (Exception ex)
+                {
+                    return new { error = ex.Message };
+                }
+            });
+
             // Mod handlers
             _webBridge.RegisterHandler("getMods", async (payload) =>
             {
@@ -148,7 +200,7 @@ namespace Blue_Archive_Mod_Manager_C_
                 try
                 {
                     var selectedIds = JsonSerializer.Deserialize<List<string>>(payload.GetRawText());
-                    _modManager.ApplyMods(selectedIds, _gamePathManager);
+                    await _modManager.ApplyModsAsync(selectedIds, _gamePathManager);
                     await _webBridge.SendNotificationAsync("statusUpdate", "Mods applied successfully!");
                     return true;
                 }
@@ -163,7 +215,7 @@ namespace Blue_Archive_Mod_Manager_C_
                 try
                 {
                     var selectedIds = JsonSerializer.Deserialize<List<string>>(payload.GetRawText());
-                    _modManager.UninstallMods(selectedIds, _gamePathManager);
+                    await _modManager.UninstallModsAsync(selectedIds, _gamePathManager);
                     await _webBridge.SendNotificationAsync("statusUpdate", "Mods uninstalled successfully!");
                     return true;
                 }

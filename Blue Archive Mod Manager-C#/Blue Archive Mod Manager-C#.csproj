@@ -23,6 +23,7 @@
   <!-- Copy Web files to output directory -->
   <ItemGroup>
     <Content Include="Web\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Web\translations.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

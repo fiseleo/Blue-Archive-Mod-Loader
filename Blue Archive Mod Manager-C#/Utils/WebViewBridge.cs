@@ -75,30 +75,7 @@ namespace Blue_Archive_Mod_Manager_C_.Utils
             {
                 var response = new { method, result, error };
                 var responseJson = JsonSerializer.Serialize(new { method = "response", data = response, id });
-                
-                // Escape the JSON for safe inclusion in JavaScript string
-                var escapedJson = responseJson.Replace("\\", "\\\\").Replace("\"", "\\\"");
-                
-                var script = $@"
-                    (function() {{
-                        try {{
-                            var data = JSON.parse(""{escapedJson}"");
-                            if (window.CSharpBridge && window.CSharpBridge._pendingResponses) {{
-                                var pending = window.CSharpBridge._pendingResponses.get(data.id);
-                                if (pending) {{
-                                    clearTimeout(pending.timeout);
-                                    console.log('[Response] Resolving:', data.data.method, data.id);
-                                    pending.resolve(data.data.result || data.data.error);
-                                    window.CSharpBridge._pendingResponses.delete(data.id);
-                                }}
-                            }}
-                        }} catch(e) {{
-                            console.error('[Response] Error:', e);
-                        }}
-                    }})();
-                ";
-                
-                _webView.ExecuteScriptAsync(script);
+                _webView.CoreWebView2.PostWebMessageAsJson(responseJson);
                 Debug.WriteLine($"[WebViewBridge] Sent response for: {method}");
             }
             catch (Exception ex)
@@ -118,29 +95,15 @@ namespace Blue_Archive_Mod_Manager_C_.Utils
             try
             {
                 var notificationJson = JsonSerializer.Serialize(new { method = eventName, data });
-                var escapedJson = notificationJson.Replace("\\", "\\\\").Replace("\"", "\\\"");
-                
-                var script = $@"
-                    (function() {{
-                        try {{
-                            var notification = JSON.parse(""{escapedJson}"");
-                            if (window.chrome && window.chrome.webview) {{
-                                window.chrome.webview.postMessage(notification);
-                                console.log('[Notification] Sent:', notification.method);
-                            }}
-                        }} catch(e) {{
-                            console.error('[Notification] Error:', e);
-                        }}
-                    }})();
-                ";
-                
-                await _webView.ExecuteScriptAsync(script);
+                _webView.CoreWebView2.PostWebMessageAsJson(notificationJson);
                 Debug.WriteLine($"[WebViewBridge] Sent notification: {eventName}");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[WebViewBridge] Error sending notification: {ex.Message}");
             }
+
+            await Task.CompletedTask;
         }
     }
 }

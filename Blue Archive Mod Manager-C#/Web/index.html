@@ -11,41 +11,46 @@
         <button id="theme-toggle-btn" title="Toggle theme">
             <span class="theme-icon">🌙</span>
         </button>
+        <select id="language-select" class="lang-select">
+            <option value="en">EN</option>
+            <option value="zh">简体</option>
+            <option value="zh-TW">繁體</option>
+        </select>
     </div>
     
     <div class="container">
         <header class="app-header">
-            <h1 class="app-title">Blue Archive Mod Loader</h1>
+            <h1 class="app-title" data-i18n="app.title">Blue Archive Mod Loader</h1>
             <div class="app-version">1.0.4</div>
         </header>
 
         <div class="content-grid">
             <div class="card game-info-card">
                 <div class="card-header">
-                    <h2>Game Info</h2>
+                    <h2 data-i18n="gameInfo.title">Game Info</h2>
                 </div>
                 <div class="card-content">
                     <div class="info-item">
-                        <label>Game Executable Path</label>
+                        <label data-i18n="gameInfo.execPath">Game Executable Path</label>
                         <div class="path-display" id="game-path"></div>
                     </div>
                     <div class="info-item">
-                        <label>Game Bundle Path</label>
+                        <label data-i18n="gameInfo.bundlePath">Game Bundle Path</label>
                         <div class="path-display" id="game-bundle-path"></div>
                     </div>
                     <div class="status-section">
                         <p id="status-message"></p>
-                        <button id="set-game-path-btn" class="btn btn-secondary">Set Game Path</button>
+                        <button id="set-game-path-btn" class="btn btn-secondary" data-i18n="gameInfo.setPath">Set Game Path</button>
                     </div>
                 </div>
             </div>
 
             <div class="card mod-management-card">
                 <div class="card-header">
-                    <h2>Mod Management</h2>
+                    <h2 data-i18n="mods.title">Mod Management</h2>
                     <div class="header-actions">
-                        <button id="select-file-btn" class="btn btn-primary">Select File</button>
-                        <button id="select-all-btn" class="btn btn-success">Select All</button>
+                        <button id="select-file-btn" class="btn btn-primary" data-i18n="mods.selectFile">Select File</button>
+                        <button id="select-all-btn" class="btn btn-success" data-i18n="mods.selectAll">Select All</button>
                     </div>
                 </div>
                 <div class="card-content">
@@ -53,12 +58,12 @@
                         <table id="mod-table" class="mod-table">
                             <thead>
                                 <tr>
-                                    <th class="col-checkbox">Enabled</th>
-                                    <th class="col-filename" data-sortable="fileName">Filename</th>
-                                    <th class="col-character" data-sortable="character">Character</th>
-                                    <th class="col-modname" data-sortable="modName">Mod Name</th>
-                                    <th class="col-date" data-sortable="installedDate">Date</th>
-                                    <th class="col-actions">Actions</th>
+                                    <th class="col-checkbox" data-i18n="table.enabled">Enabled</th>
+                                    <th class="col-filename" data-sortable="fileName" data-i18n="table.filename">Filename</th>
+                                    <th class="col-character" data-sortable="character" data-i18n="table.character">Character</th>
+                                    <th class="col-modname" data-sortable="modName" data-i18n="table.modName">Mod Name</th>
+                                    <th class="col-date" data-sortable="installedDate" data-i18n="table.date">Date</th>
+                                    <th class="col-actions" data-i18n="table.actions">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="mod-table-body">
@@ -73,15 +78,15 @@
             <div class="action-buttons">
                 <button id="apply-mods-btn" class="btn btn-primary btn-large">
                     <span class="btn-icon">⚡</span>
-                    <span class="btn-text">Apply Mods</span>
+                        <span class="btn-text" data-i18n="actions.applyMods">Apply Mods</span>
                 </button>
                 <button id="uninstall-mods-btn" class="btn btn-danger btn-large">
                     <span class="btn-icon">🗑️</span>
-                    <span class="btn-text">Uninstall Mods</span>
+                        <span class="btn-text" data-i18n="actions.uninstallMods">Uninstall Mods</span>
                 </button>
                 <button id="launch-game-btn" class="btn btn-success btn-large">
                     <span class="btn-icon">🚀</span>
-                    <span class="btn-text">Launch Game</span>
+                        <span class="btn-text" data-i18n="actions.launchGame">Launch Game</span>
                 </button>
             </div>
             <div class="status-display">

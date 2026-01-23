@@ -258,5 +258,49 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
             var bundlePath = _settingsManager.Get<string>("gameBundlePath");
             return (gamePath, bundlePath);
         }
+
+        public string? FindTargetFile(string fileName, int maxDepth = 6)
+        {
+            var (_, bundlePath) = GetGamePaths();
+            if (string.IsNullOrEmpty(bundlePath) || !Directory.Exists(bundlePath))
+            {
+                return null;
+            }
+
+            var direct = Path.Combine(bundlePath, fileName);
+            if (File.Exists(direct)) return direct;
+
+            var stack = new Stack<(string path, int depth)>();
+            stack.Push((bundlePath, 0));
+            var skipDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "Cache", "Logs", "Temp", "TempCache"
+            };
+
+            while (stack.Count > 0)
+            {
+                var (current, depth) = stack.Pop();
+                if (depth > maxDepth) continue;
+
+                try
+                {
+                    var files = Directory.GetFiles(current, fileName, SearchOption.TopDirectoryOnly);
+                    if (files.Length > 0) return files[0];
+
+                    foreach (var dir in Directory.GetDirectories(current))
+                    {
+                        var name = Path.GetFileName(dir);
+                        if (skipDirs.Contains(name)) continue;
+                        stack.Push((dir, depth + 1));
+                    }
+                }
+                catch
+                {
+                    // ignore inaccessible dirs
+                }
+            }
+
+            return null;
+        }
     }
 }

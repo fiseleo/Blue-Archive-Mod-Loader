@@ -15,11 +15,14 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
         private readonly string _modBundleDir;
         private readonly string[] _supportedExtensions = { ".ogg", ".mp4", ".jpg", ".jpeg", ".png", ".bundle", ".zip", ".db" };
 
+        private readonly Action<string> _logger;
+
         public ModManager(SettingsManager settingsManager, StudentIndexManager studentIndexManager)
         {
             _settingsManager = settingsManager;
             _studentIndexManager = studentIndexManager;
             _modBundleDir = Path.Combine(settingsManager.GetAppDataPath(), "ModBundle");
+            _logger = msg => Console.WriteLine(msg);
             
             if (!Directory.Exists(_modBundleDir))
             {
@@ -113,6 +116,14 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
             var validMods = new List<ModData>();
             foreach (var mod in mods)
             {
+                if (string.IsNullOrWhiteSpace(mod.Id))
+                {
+                    mod.Id = Guid.NewGuid().ToString();
+                }
+                if (string.IsNullOrWhiteSpace(mod.InstalledDate))
+                {
+                    mod.InstalledDate = DateTime.UtcNow.ToString("O");
+                }
                 if (File.Exists(mod.Path))
                 {
                     validMods.Add(mod);
@@ -211,21 +222,102 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
             _settingsManager.Set("mods", mods);
         }
 
-        public void ApplyMods(List<string> selectedModIds, GamePathManager gamePathManager)
+        public async Task ApplyModsAsync(List<string> selectedModIds, GamePathManager gamePathManager)
         {
-            var mods = GetAllMods();
-            var (gamePath, bundlePath) = gamePathManager.GetGamePaths();
+            await Task.Run(async () =>
+            {
+                var mods = GetAllMods();
+                var (gamePath, bundlePath) = gamePathManager.GetGamePaths();
+                if (string.IsNullOrEmpty(bundlePath) || !Directory.Exists(bundlePath))
+                {
+                    _logger("Bundle path not configured or missing.");
+                    return;
+                }
 
-            // TODO: Implement mod application logic (would involve CRC patching)
-            Console.WriteLine($"Applying {selectedModIds.Count} mods to {bundlePath}");
+                var selected = mods.Where(m => selectedModIds.Contains(m.Id)).ToList();
+                foreach (var mod in selected)
+                {
+                    var modPath = mod.Path;
+                    if (!File.Exists(modPath))
+                    {
+                        _logger($"Mod file missing: {modPath}");
+                        continue;
+                    }
+
+                    var targetFileName = !string.IsNullOrEmpty(mod.FileName) ? mod.FileName : Path.GetFileName(mod.Path);
+                    var targetPath = gamePathManager.FindTargetFile(targetFileName);
+                    if (string.IsNullOrEmpty(targetPath))
+                    {
+                        _logger($"Target file not found for mod: {targetFileName}");
+                        continue;
+                    }
+
+                    var backupPath = targetPath + ".bak";
+                    try
+                    {
+                        if (!File.Exists(backupPath))
+                        {
+                            File.Copy(targetPath, backupPath, true);
+                            _logger($"Backup created: {backupPath}");
+                        }
+
+                        var success = await Utils.CrcPatcher.ManipulateCrcAsync(backupPath, modPath, targetPath, _logger);
+                        if (success)
+                        {
+                            mod.Enabled = true;
+                            _logger($"Applied mod: {mod.FileName}");
+                        }
+                        else
+                        {
+                            _logger($"Failed to apply CRC patch for: {mod.FileName}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger($"Error applying mod {mod.FileName}: {ex.Message}");
+                    }
+                }
+
+                SaveMods(mods);
+            });
         }
 
-        public void UninstallMods(List<string> selectedModIds, GamePathManager gamePathManager)
+        public async Task UninstallModsAsync(List<string> selectedModIds, GamePathManager gamePathManager)
         {
-            var (gamePath, bundlePath) = gamePathManager.GetGamePaths();
+            await Task.Run(() =>
+            {
+                var (gamePath, bundlePath) = gamePathManager.GetGamePaths();
+                var mods = GetAllMods();
+                var selected = mods.Where(m => selectedModIds.Contains(m.Id)).ToList();
 
-            // TODO: Implement mod uninstall logic
-            Console.WriteLine($"Uninstalling {selectedModIds.Count} mods from {bundlePath}");
+                foreach (var mod in selected)
+                {
+                    var targetFileName = !string.IsNullOrEmpty(mod.FileName) ? mod.FileName : Path.GetFileName(mod.Path);
+                    var targetPath = gamePathManager.FindTargetFile(targetFileName);
+                    if (string.IsNullOrEmpty(targetPath))
+                    {
+                        _logger($"Target file not found for uninstall: {targetFileName}");
+                        continue;
+                    }
+
+                    var backupPath = targetPath + ".bak";
+                    try
+                    {
+                        if (File.Exists(backupPath))
+                        {
+                            File.Copy(backupPath, targetPath, true);
+                            _logger($"Restored backup for: {targetFileName}");
+                        }
+                        mod.Enabled = false;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger($"Error restoring {targetFileName}: {ex.Message}");
+                    }
+                }
+
+                SaveMods(mods);
+            });
         }
     }
 }

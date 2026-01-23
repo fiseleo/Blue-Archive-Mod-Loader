@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Globalization;
 
 namespace Blue_Archive_Mod_Manager_C_.Utils
 {
@@ -12,48 +13,90 @@ namespace Blue_Archive_Mod_Manager_C_.Utils
 
         public LocalizationManager()
         {
-            LoadLocales();
+            LoadTranslations();
+            DetectLocale();
         }
 
-        private void LoadLocales()
+        private void LoadTranslations()
         {
-            var localesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Locales");
-            
-            if (!Directory.Exists(localesPath))
+            try
             {
-                // Create default locales
-                CreateDefaultLocales(localesPath);
-            }
-
-            var localeFiles = Directory.GetFiles(localesPath, "*.json");
-            foreach (var file in localeFiles)
-            {
-                try
+                var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                // Try standard path
+                var jsonPath = Path.Combine(baseDir, "Web", "translations.json");
+                
+                // Fallback for development if not copied to bin
+                if (!File.Exists(jsonPath))
                 {
-                    var locale = Path.GetFileNameWithoutExtension(file);
-                    var content = File.ReadAllText(file);
-                    var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(content);
-                    if (dict != null)
+                    // Try looking up in project dir
+                    var altPath = Path.Combine(baseDir, "..", "..", "..", "Web", "translations.json");
+                    if (!File.Exists(altPath))
                     {
-                        _translations[locale] = dict;
+                         // Try looking up 2 levels
+                         altPath = Path.Combine(baseDir, "..", "..", "Web", "translations.json");
+                    }
+
+                    if (File.Exists(altPath))
+                    {
+                        jsonPath = Path.GetFullPath(altPath);
                     }
                 }
-                catch (Exception ex)
+
+                if (File.Exists(jsonPath))
                 {
-                    Console.Error.WriteLine($"Error loading locale {file}: {ex.Message}");
+                    var content = File.ReadAllText(jsonPath);
+                    _translations = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, string>>>(content) ?? new();
                 }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading translations: {ex.Message}");
             }
         }
 
-        public void SetLocale(string locale)
+        private void DetectLocale()
         {
-            if (_translations.ContainsKey(locale))
+            var culture = CultureInfo.CurrentUICulture.Name; // e.g. "en-US", "zh-TW", "zh-CN"
+            
+            if (_translations.ContainsKey(culture))
             {
-                _currentLocale = locale;
+                _currentLocale = culture;
+                return;
             }
-            else
+
+            var parent = CultureInfo.CurrentUICulture.Parent.Name;
+            if (!string.IsNullOrEmpty(parent) && _translations.ContainsKey(parent))
+            {
+                 _currentLocale = parent;
+                 return;
+            }
+
+            if (culture.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
+            {
+                if (culture.Contains("TW", StringComparison.OrdinalIgnoreCase) || culture.Contains("HK", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (_translations.ContainsKey("zh-TW")) _currentLocale = "zh-TW";
+                    else if (_translations.ContainsKey("zh")) _currentLocale = "zh";
+                }
+                else
+                {
+                    if (_translations.ContainsKey("zh")) _currentLocale = "zh";
+                    else if (_translations.ContainsKey("zh-TW")) _currentLocale = "zh-TW";
+                }
+                return;
+            }
+
+            if (_translations.ContainsKey("en"))
             {
                 _currentLocale = "en";
+            }
+            else if (_translations.Count > 0)
+            {
+                // Fallback to first available
+                foreach(var key in _translations.Keys) {
+                    _currentLocale = key;
+                    break;
+                }
             }
         }
 
@@ -61,18 +104,15 @@ namespace Blue_Archive_Mod_Manager_C_.Utils
         {
             string value = key;
 
-            // Try current locale
             if (_translations.TryGetValue(_currentLocale, out var dict) && dict.TryGetValue(key, out var localized))
             {
                 value = localized;
             }
-            // Fallback to English
             else if (_translations.TryGetValue("en", out var engDict) && engDict.TryGetValue(key, out var engLocalized))
             {
                 value = engLocalized;
             }
 
-            // Replace parameters
             if (parameters != null)
             {
                 foreach (var param in parameters)
@@ -82,47 +122,6 @@ namespace Blue_Archive_Mod_Manager_C_.Utils
             }
 
             return value;
-        }
-
-        private void CreateDefaultLocales(string localesPath)
-        {
-            Directory.CreateDirectory(localesPath);
-
-            var enLocale = new Dictionary<string, string>
-            {
-                { "title", "Blue Archive Mod Loader" },
-                { "select_file_button", "Select File" },
-                { "select_all_button", "Select All" },
-                { "set_game_path_button", "Set Game Path" },
-                { "game_path_label", "Game Path" },
-                { "game_bundle_path_label", "Game Bundle Path" },
-                { "game_path_not_set", "Game path not set" },
-                { "mod_management_title", "Mod Management" },
-                { "game_info_title", "Game Info" },
-                { "apply_mods_button", "Apply Mods" },
-                { "uninstall_mods_button", "Uninstall Mods" },
-                { "launch_game_button", "Launch Game" },
-                { "mod_table_header_enabled", "Enabled" },
-                { "mod_table_header_filename", "Filename" },
-                { "mod_table_header_character", "Character" },
-                { "mod_table_header_modname", "Mod Name" },
-                { "mod_table_header_date", "Date" },
-                { "mod_table_header_actions", "Actions" },
-                { "toggle_theme", "Toggle Theme" },
-                { "loading", "Loading..." },
-                { "status_finding_steam", "Finding Steam..." },
-                { "status_steam_found", "Steam found at: {{path}}" },
-                { "status_checking_steam_library", "Checking library: {{library}}" },
-                { "status_found_steam", "Game found at: {{path}}" },
-                { "status_steam_not_found_fallback", "Game not found in Steam" },
-                { "status_found", "Game found: {{path}}" },
-                { "status_not_found", "Game not found" },
-                { "status_preparing_search", "Preparing search..." },
-                { "status_drives_found", "Drives found: {{drives}}" },
-                { "status_scanning_drive", "Scanning: {{drive}}" }
-            };
-
-            File.WriteAllText(Path.Combine(localesPath, "en.json"), JsonSerializer.Serialize(enLocale, new JsonSerializerOptions { WriteIndented = true }));
         }
     }
 }
