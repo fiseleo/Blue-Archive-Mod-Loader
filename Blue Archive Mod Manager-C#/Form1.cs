@@ -14,7 +14,7 @@ using Blue_Archive_Mod_Manager_C_.Modules;
 
 namespace Blue_Archive_Mod_Manager_C_
 {
-    public partial class Form1 : Form
+    public partial class Font1 : Form
     {
         private SettingsManager? _settingsManager;
         private LocalizationManager? _localizationManager;
@@ -25,14 +25,14 @@ namespace Blue_Archive_Mod_Manager_C_
         private CatalogManager? _catalogManager;
         private WebViewBridge? _webBridge;
 
-        public Form1()
+        public Font1()
         {
             InitializeComponent();
             InitializeModules();
-            
+
             var disclaimerMsg = _localizationManager?.T("disclaimer.message") ?? "This program is Blue Archive Mod Manager. Mods are unofficial assets. Use at your own risk.";
             var disclaimerTitle = _localizationManager?.T("disclaimer.title") ?? "Disclaimer";
-            
+
             MessageBox.Show(disclaimerMsg, disclaimerTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
             InitializeWebView();
         }
@@ -75,7 +75,7 @@ namespace Blue_Archive_Mod_Manager_C_
                 // Navigate to the index.html
                 var baseDir = AppDomain.CurrentDomain.BaseDirectory;
                 var htmlPath = Path.Combine(baseDir, "Web", "index.html");
-                
+
                 // Try different paths if standard path doesn't work
                 if (!File.Exists(htmlPath))
                 {
@@ -163,23 +163,23 @@ namespace Blue_Archive_Mod_Manager_C_
                     if (!string.IsNullOrEmpty(gamePath))
                     {
                         var gameDirectory = Path.GetDirectoryName(gamePath);
-                         // Note: Bundle path might differ for JP? Global uses BlueArchive_Data.
-                         // Usually Unity games use <ExeName>_Data.
-                         // If the JP exe is named differently, this folder name might be different.
-                         // But usually it's BlueArchive_Data for global.
-                         // Let's rely on GamePathManager to just return the path, and here we might need to be smarter about the data folder.
-                         // But for now let's assume standard Unity structure.
-                         // However, if the exe is "BlueArchive.exe", data is "BlueArchive_Data".
-                         // If JP exe is "BlueArchive.exe", it's the same.
+                        // Note: Bundle path might differ for JP? Global uses BlueArchive_Data.
+                        // Usually Unity games use <ExeName>_Data.
+                        // If the JP exe is named differently, this folder name might be different.
+                        // But usually it's BlueArchive_Data for global.
+                        // Let's rely on GamePathManager to just return the path, and here we might need to be smarter about the data folder.
+                        // But for now let's assume standard Unity structure.
+                        // However, if the exe is "BlueArchive.exe", data is "BlueArchive_Data".
+                        // If JP exe is "BlueArchive.exe", it's the same.
                         var exeName = Path.GetFileNameWithoutExtension(gamePath);
                         var bundlePath = Path.Combine(gameDirectory, $"{exeName}_Data");
-                        
+
                         // We should probably rely on GamePathManager to update the stored paths too?
                         // The existing code did: var paths = _gamePathManager.SaveGamePaths(result); in selectGamePath.
                         // But in findGamePathAuto it didn't call SaveGamePaths explicitly, does FindGameExecutableAsync do it?
 
                         // Let's check GamePathManager implementation next.
-                        
+
                         return new { gamePath, gameBundlePath = bundlePath };
                     }
 
@@ -229,7 +229,7 @@ namespace Blue_Archive_Mod_Manager_C_
                 if (payload.ValueKind == JsonValueKind.Object)
                 {
                     if (payload.TryGetProperty("region", out var regProp)) region = regProp.GetString() ?? "global";
-                    
+
                     if (payload.TryGetProperty("mod", out var modProp))
                     {
                         mod = JsonSerializer.Deserialize<ModData>(modProp.GetRawText());
@@ -279,8 +279,8 @@ namespace Blue_Archive_Mod_Manager_C_
 
                     if (payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("modIds", out var idsProp))
                     {
-                         if (payload.TryGetProperty("region", out var regProp)) region = regProp.GetString() ?? "global";
-                         selectedIds = JsonSerializer.Deserialize<List<string>>(idsProp.GetRawText());
+                        if (payload.TryGetProperty("region", out var regProp)) region = regProp.GetString() ?? "global";
+                        selectedIds = JsonSerializer.Deserialize<List<string>>(idsProp.GetRawText());
                     }
                     else if (payload.ValueKind == JsonValueKind.Array)
                     {
@@ -306,8 +306,8 @@ namespace Blue_Archive_Mod_Manager_C_
 
                     if (payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("modIds", out var idsProp))
                     {
-                         if (payload.TryGetProperty("region", out var regProp)) region = regProp.GetString() ?? "global";
-                         selectedIds = JsonSerializer.Deserialize<List<string>>(idsProp.GetRawText());
+                        if (payload.TryGetProperty("region", out var regProp)) region = regProp.GetString() ?? "global";
+                        selectedIds = JsonSerializer.Deserialize<List<string>>(idsProp.GetRawText());
                     }
                     else if (payload.ValueKind == JsonValueKind.Array)
                     {
@@ -315,7 +315,7 @@ namespace Blue_Archive_Mod_Manager_C_
                     }
 
                     var errors = await _modManager.UninstallModsAsync(selectedIds, _gamePathManager, region);
-                    
+
                     if (errors.Count > 0)
                     {
                         var errorMsg = "Uninstall completed with errors:\n" + string.Join("\n", errors);
@@ -323,7 +323,7 @@ namespace Blue_Archive_Mod_Manager_C_
                         // We return error object so frontend throws and alerts
                         return new { error = errorMsg };
                     }
-                    
+
                     await _webBridge.SendNotificationAsync("statusUpdate", "Mods uninstalled successfully!");
                     return true;
                 }
@@ -394,8 +394,8 @@ namespace Blue_Archive_Mod_Manager_C_
             _webBridge.RegisterHandler("launchBamt", async (payload) =>
             {
                 if (_bamtManager == null) return new { error = "BamtManager not initialized" };
-                
-                await _bamtManager.LaunchBamtAsync(async (status, progress) => 
+
+                await _bamtManager.LaunchBamtAsync(async (status, progress) =>
                 {
                     await _webBridge.SendNotificationAsync("bamtStatus", new { status, progress });
                 });
@@ -405,8 +405,8 @@ namespace Blue_Archive_Mod_Manager_C_
             _webBridge.RegisterHandler("createDetailJson", async (payload) =>
             {
                 if (_catalogManager == null) return new { error = "CatalogManager not initialized" };
-                
-                try 
+
+                try
                 {
                     string region = "global";
                     if (payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("region", out var regProp))
@@ -415,7 +415,7 @@ namespace Blue_Archive_Mod_Manager_C_
                     }
 
                     var exportPath = await _catalogManager.ExportCatalogJsonAsync(region);
-                    
+
                     if (exportPath.StartsWith("Error:"))
                     {
                         return new { error = exportPath };
@@ -440,8 +440,8 @@ namespace Blue_Archive_Mod_Manager_C_
             _webBridge.RegisterHandler("createMappingJson", async (payload) =>
             {
                 if (_catalogManager == null) return new { error = "CatalogManager not initialized" };
-                
-                try 
+
+                try
                 {
                     string region = "global";
                     if (payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("region", out var regProp))
@@ -450,7 +450,7 @@ namespace Blue_Archive_Mod_Manager_C_
                     }
 
                     var exportPath = await _catalogManager.ExportMappingJsonAsync(region);
-                    
+
                     if (exportPath.StartsWith("Error:"))
                     {
                         return new { error = exportPath };
@@ -503,6 +503,11 @@ namespace Blue_Archive_Mod_Manager_C_
                 }
             }
             return null;
+        }
+
+        private void BMM_Load(object sender, EventArgs e)
+        {
+
         }
     }
 }

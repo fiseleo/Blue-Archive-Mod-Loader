@@ -1,4 +1,4 @@
-namespace Blue_Archive_Mod_Manager_C_
+﻿namespace Blue_Archive_Mod_Manager_C_
 {
     internal static class Program
     {
@@ -11,7 +11,7 @@ namespace Blue_Archive_Mod_Manager_C_
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
-            Application.Run(new Form1());
+            Application.Run(new Font1());
         }
     }
 }
