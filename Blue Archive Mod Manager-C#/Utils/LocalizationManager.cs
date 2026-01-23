@@ -10,6 +10,7 @@ namespace Blue_Archive_Mod_Manager_C_.Utils
     {
         private Dictionary<string, Dictionary<string, string>> _translations = new();
         private string _currentLocale = "en";
+        public string CurrentLocale => _currentLocale;
 
         public LocalizationManager()
         {

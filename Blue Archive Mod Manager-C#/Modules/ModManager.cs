@@ -106,10 +106,10 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
             return currentMods;
         }
 
-        public List<ModData> GetAllMods()
+        public List<ModData> GetAllMods(string? forcedLocale = null)
         {
             var mods = _settingsManager.Get<List<ModData>>("mods", new List<ModData>());
-            var currentLocale = _settingsManager.Get<string>("language", "en");
+            var currentLocale = forcedLocale ?? _settingsManager.Get<string>("language", "en");
             var supportedExts = new HashSet<string>(_supportedExtensions.Select(e => e.ToLower()));
 
             // Verify mod files still exist
@@ -124,6 +124,16 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
                 {
                     mod.InstalledDate = DateTime.UtcNow.ToString("O");
                 }
+                // Refresh character name if possible based on current locale
+                if (!string.IsNullOrEmpty(mod.CharacterDev))
+                {
+                    var newName = _studentIndexManager.GetCharacterName(mod.CharacterDev, currentLocale);
+                    if (!string.IsNullOrEmpty(newName))
+                    {
+                        mod.Character = newName;
+                    }
+                }
+
                 if (File.Exists(mod.Path))
                 {
                     validMods.Add(mod);

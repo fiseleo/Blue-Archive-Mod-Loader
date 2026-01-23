@@ -21,6 +21,7 @@ namespace Blue_Archive_Mod_Manager_C_
         private GamePathManager? _gamePathManager;
         private StudentIndexManager? _studentIndexManager;
         private ModManager? _modManager;
+        private BamtManager? _bamtManager;
         private WebViewBridge? _webBridge;
 
         public Form1()
@@ -44,6 +45,7 @@ namespace Blue_Archive_Mod_Manager_C_
                 _gamePathManager = new GamePathManager(_settingsManager);
                 _studentIndexManager = new StudentIndexManager(_settingsManager);
                 _modManager = new ModManager(_settingsManager, _studentIndexManager);
+                _bamtManager = new BamtManager(_settingsManager);
             }
             catch (Exception ex)
             {
@@ -56,6 +58,11 @@ namespace Blue_Archive_Mod_Manager_C_
         {
             try
             {
+                if (_studentIndexManager != null)
+                {
+                    await _studentIndexManager.InitializeIndexAsync();
+                }
+
                 // Initialize WebView2
                 await webView21.EnsureCoreWebView2Async();
 
@@ -163,7 +170,8 @@ namespace Blue_Archive_Mod_Manager_C_
             // Mod handlers
             _webBridge.RegisterHandler("getMods", async (payload) =>
             {
-                var mods = _modManager.GetAllMods();
+                var locale = _localizationManager?.CurrentLocale;
+                var mods = _modManager.GetAllMods(locale);
                 return mods;
             });
 
@@ -240,6 +248,17 @@ namespace Blue_Archive_Mod_Manager_C_
                 {
                     return new { error = ex.Message };
                 }
+            });
+
+            _webBridge.RegisterHandler("launchBamt", async (payload) =>
+            {
+                if (_bamtManager == null) return new { error = "BamtManager not initialized" };
+                
+                await _bamtManager.LaunchBamtAsync(async (status) => 
+                {
+                    await _webBridge.SendNotificationAsync("statusUpdate", status);
+                });
+                return true;
             });
         }
 

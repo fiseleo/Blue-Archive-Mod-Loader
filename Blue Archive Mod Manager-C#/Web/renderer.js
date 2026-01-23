@@ -245,6 +245,7 @@ console.log('[setupEventListeners] Setting up all listeners...');
 const buttons = {
     'theme-toggle-btn': toggleTheme,
     'set-game-path-btn': selectGamePath,
+    'bamt-btn': launchBamt,
     'select-file-btn': selectModFiles,
     'select-all-btn': selectAllMods,
     'apply-mods-btn': applyMods,
@@ -522,6 +523,17 @@ async function launchGame() {
     } catch (e) {
         console.error('[launchGame] Error:', e);
         document.getElementById('action-status').innerText = t('status.launchGameFail');
+    }
+}
+
+async function launchBamt() {
+    console.log('[launchBamt] Called');
+    try {
+        document.getElementById('status-message').innerText = t('status.launchingBamt');
+        await CSharpBridge.invoke('launchBamt');
+    } catch (e) {
+        console.error('[launchBamt] Error:', e);
+        document.getElementById('status-message').innerText = 'Error: ' + e;
     }
 }
 
