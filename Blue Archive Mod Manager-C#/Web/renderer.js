@@ -547,6 +547,30 @@ function escapeHtml(text) {
 CSharpBridge.onNotification('statusUpdate', (message) => {
     console.log('[Notification] Status:', message);
     document.getElementById('status-message').innerText = message;
+    // Hide progress bar on generic status updates if desired, or handle separately
+    document.getElementById('progress-container').style.display = 'none';
+});
+
+CSharpBridge.onNotification('bamtStatus', (data) => {
+    console.log('[Notification] BAMT Status:', data);
+    if (data && data.status) {
+        document.getElementById('status-message').innerText = data.status;
+    }
+    const progressBar = document.getElementById('progress-bar');
+    const progressContainer = document.getElementById('progress-container');
+    
+    if (data && data.progress !== null && data.progress !== undefined) {
+        progressContainer.style.display = 'block';
+        progressBar.style.width = data.progress + '%';
+        progressBar.innerText = data.progress + '%';
+    } else {
+        // Keep showing if it was downloading, but if operation finished or failed, hide?
+        // For "Extracting..." we sent 100, so it stays full.
+        // For "BAMT Launched!", we sent null.
+        if (data.status === 'BAMT Launched!' || data.status.startsWith('Error') || data.status.startsWith('Failed')) {
+             progressContainer.style.display = 'none';
+        }
+    }
 });
 
 CSharpBridge.onNotification('gamePathStatus', (data) => {

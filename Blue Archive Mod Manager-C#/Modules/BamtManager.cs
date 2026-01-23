@@ -21,14 +21,14 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
             _logger = msg => Console.WriteLine($"[BAMT] {msg}");
         }
 
-        public async Task LaunchBamtAsync(Action<string> statusCallback)
+        public async Task LaunchBamtAsync(Action<string, int?> statusCallback)
         {
             try
             {
                 var exePath = FindBamtExecutable();
                 if (string.IsNullOrEmpty(exePath))
                 {
-                    statusCallback("Downloading BAMT...");
+                    statusCallback("Downloading BAMT...", 0);
                     if (await DownloadAndExtractBamtAsync(statusCallback))
                     {
                         exePath = FindBamtExecutable();
@@ -37,23 +37,23 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
 
                 if (!string.IsNullOrEmpty(exePath) && File.Exists(exePath))
                 {
-                    statusCallback("Launching BAMT...");
+                    statusCallback("Launching BAMT...", 100);
                     Process.Start(new ProcessStartInfo
                     {
                         FileName = exePath,
                         WorkingDirectory = Path.GetDirectoryName(exePath),
                         UseShellExecute = true
                     });
-                    statusCallback("BAMT Launched!");
+                    statusCallback("BAMT Launched!", null);
                 }
                 else
                 {
-                    statusCallback("Failed to find BAMT executable.");
+                    statusCallback("Failed to find BAMT executable.", null);
                 }
             }
             catch (Exception ex)
             {
-                statusCallback($"Error: {ex.Message}");
+                statusCallback($"Error: {ex.Message}", null);
                 _logger($"Error launching BAMT: {ex.Message}");
             }
         }
@@ -64,7 +64,7 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
             return Directory.GetFiles(_toolsDir, "BA-Modding-Toolkit.exe", SearchOption.AllDirectories).FirstOrDefault();
         }
 
-        private async Task<bool> DownloadAndExtractBamtAsync(Action<string> statusCallback)
+        private async Task<bool> DownloadAndExtractBamtAsync(Action<string, int?> statusCallback)
         {
             try
             {
@@ -73,7 +73,7 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
                 using var client = new HttpClient();
                 client.DefaultRequestHeaders.Add("User-Agent", "Blue-Archive-Mod-Manager");
 
-                statusCallback("Checking latest release...");
+                statusCallback("Checking latest release...", null);
                 var releasesUrl = "https://api.github.com/repos/Agent-0808/BA-Modding-Toolkit/releases/latest";
                 var response = await client.GetStringAsync(releasesUrl);
                 var releaseData = JsonDocument.Parse(response);
@@ -98,16 +98,40 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
 
                 if (string.IsNullOrEmpty(downloadUrl))
                 {
-                    statusCallback("No suitable download found in latest release.");
+                    statusCallback("No suitable download found in latest release.", null);
                     return false;
                 }
 
-                statusCallback("Downloading...");
+                statusCallback("Downloading...", 0);
                 var zipPath = Path.Combine(_toolsDir, "bamt_update.zip");
-                var zipBytes = await client.GetByteArrayAsync(downloadUrl);
-                await File.WriteAllBytesAsync(zipPath, zipBytes);
 
-                statusCallback("Extracting...");
+                using (var downloadResponse = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead))
+                {
+                    downloadResponse.EnsureSuccessStatusCode();
+                    var totalBytes = downloadResponse.Content.Headers.ContentLength ?? -1L;
+                    var canReportProgress = totalBytes != -1;
+
+                    using (var contentStream = await downloadResponse.Content.ReadAsStreamAsync())
+                    using (var fileStream = new FileStream(zipPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+                    {
+                        var buffer = new byte[8192];
+                        var totalRead = 0L;
+                        var bytesRead = 0;
+
+                        while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                        {
+                            await fileStream.WriteAsync(buffer, 0, bytesRead);
+                            totalRead += bytesRead;
+                            if (canReportProgress)
+                            {
+                                var progress = (int)((double)totalRead / totalBytes * 100);
+                                statusCallback($"Downloading... {progress}%", progress);
+                            }
+                        }
+                    }
+                }
+
+                statusCallback("Extracting...", 100);
                 // Clean old files
                 foreach (var file in Directory.GetFiles(_toolsDir))
                 {
@@ -128,7 +152,7 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
             }
             catch (Exception ex)
             {
-                statusCallback($"Download failed: {ex.Message}");
+                statusCallback($"Download failed: {ex.Message}", null);
                 _logger($"Download failed: {ex.Message}");
                 return false;
             }

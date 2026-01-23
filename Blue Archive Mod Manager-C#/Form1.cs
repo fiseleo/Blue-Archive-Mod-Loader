@@ -254,9 +254,9 @@ namespace Blue_Archive_Mod_Manager_C_
             {
                 if (_bamtManager == null) return new { error = "BamtManager not initialized" };
                 
-                await _bamtManager.LaunchBamtAsync(async (status) => 
+                await _bamtManager.LaunchBamtAsync(async (status, progress) => 
                 {
-                    await _webBridge.SendNotificationAsync("statusUpdate", status);
+                    await _webBridge.SendNotificationAsync("bamtStatus", new { status, progress });
                 });
                 return true;
             });
