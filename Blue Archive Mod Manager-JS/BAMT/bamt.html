@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="bamt.document.title">BA-Modding-Toolkit (BAMT)</title>
+    <link rel="stylesheet" href="bamt.css">
+</head>
+<body>
+    <div class="bamt-app">
+        <header class="app-header">
+            <div class="header-left">
+                <h1 class="app-title" data-i18n="bamt.header.title">BA-Modding-Toolkit</h1>
+                <span class="app-subtitle" data-i18n="bamt.header.subtitle">Electron Version</span>
+                <span class="thank-author" data-i18n="bamt.header.thankAuthor"></span>
+            </div>
+            <div class="header-right">
+                <div class="status-indicator" id="global-status"></div>
+                <button class="reset-log-btn" id="reset-log-btn" type="button" data-i18n="bamt.actions.clearLog"></button>
+            </div>
+        </header>
+
+        <div class="workspace">
+            <aside class="settings-panel">
+                <section class="panel-section">
+                    <h2 data-i18n="bamt.sharedPaths.title"></h2>
+                    <div class="field-group" data-field="game-resource">
+                        <label for="game-resource-path" data-i18n="bamt.sharedPaths.gameResource.label"></label>
+                        <div class="input-actions">
+                            <input id="game-resource-path" type="text" readonly data-i18n-placeholder="bamt.sharedPaths.folderPlaceholder" />
+                            <button class="browse-btn" data-picker="game-resource" data-i18n="bamt.actions.browse"></button>
+                        </div>
+                        <p class="hint" data-i18n="bamt.sharedPaths.gameResource.hint"></p>
+                    </div>
+                    <div class="field-group" data-field="output-dir">
+                        <label for="output-dir-path" data-i18n="bamt.sharedPaths.output.label"></label>
+                        <div class="input-actions">
+                            <input id="output-dir-path" type="text" readonly  data-i18n-placeholder="bamt.sharedPaths.folderPlaceholder" />
+                            <button class="browse-btn" data-picker="output-dir" data-i18n="bamt.actions.browse"></button>
+                        </div>
+                        <p class="hint" data-i18n="bamt.sharedPaths.output.hint"></p>
+                    </div>
+                </section>
+
+                <section class="panel-section">
+                    <h2 data-i18n="bamt.options.title"></h2>
+                    <label class="checkbox">
+                        <input type="checkbox" id="opt-replace-texture" checked />
+                        <span data-i18n="bamt.options.replaceTexture"></span>
+                    </label>
+                    <label class="checkbox">
+                        <input type="checkbox" id="opt-replace-textasset" />
+                        <span data-i18n="bamt.options.replaceTextasset"></span>
+                    </label>
+                    <label class="checkbox">
+                        <input type="checkbox" id="opt-replace-mesh" />
+                        <span data-i18n="bamt.options.replaceMesh"></span>
+                    </label>
+                    <label class="checkbox">
+                        <input type="checkbox" id="opt-delete-old-mod" checked />
+                        <span data-i18n="bamt.options.deleteOldMod"></span>
+                    </label>
+                </section>
+            </aside>
+
+            <main class="main-panel">
+                <nav class="tab-bar" role="tablist">
+                    <button class="tab-btn active" role="tab" aria-selected="true" data-tab="mod-update" data-i18n="bamt.tabs.modUpdate">Mod 更新</button>
+                    <button class="tab-btn" role="tab" aria-selected="false" data-tab="batch-update" data-i18n="bamt.tabs.batchUpdate">批次更新</button>
+                    <button class="tab-btn" role="tab" aria-selected="false" data-tab="png-replace" data-i18n="bamt.tabs.pngReplace">PNG 替換</button>
+                </nav>
+
+                <section class="tab-panel active" data-tab-panel="mod-update" role="tabpanel">
+                    <div class="card">
+                        <header class="card-header">
+                            <h3 data-i18n="bamt.modUpdate.oldMod.title"></h3>
+                            <span class="card-hint" data-i18n="bamt.modUpdate.oldMod.hint"></span>
+                        </header>
+                        <div class="drop-zone" data-target="old-mod">
+                            <p class="drop-title" data-i18n="bamt.modUpdate.oldMod.dropTitle"></p>
+                            <p class="drop-caption" id="old-mod-caption" data-i18n="bamt.drop.noSelectionFile"></p>
+                            <button class="browse-btn" data-picker="old-mod" data-i18n="bamt.actions.chooseFile"></button>
+                            <input type="file" id="picker-old-mod" hidden accept=".bundle,.zip,.db,.ogg,.mp4,.png,.jpg,.jpeg" />
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <header class="card-header">
+                            <h3 data-i18n="bamt.modUpdate.target.title"></h3>
+                            <span class="card-hint" data-i18n="bamt.modUpdate.target.hint"></span>
+                        </header>
+                        <div class="auto-find">
+                            <input type="text" id="auto-find-prefix" placeholder="自動判定的檔名前綴" readonly data-i18n-placeholder="bamt.modUpdate.target.autoPrefix" />
+                            <button class="secondary-btn" id="auto-find-btn" type="button" data-i18n="bamt.modUpdate.target.autoFind"></button>
+                        </div>
+                        <div class="drop-zone" data-target="new-bundle">
+                            <p class="drop-title" data-i18n="bamt.modUpdate.target.dropTitle"></p>
+                            <p class="drop-caption" id="new-bundle-caption" data-i18n="bamt.drop.noSelectionFile"></p>
+                            <button class="browse-btn" data-picker="new-bundle" data-i18n="bamt.actions.chooseFile"></button>
+                            <input type="file" id="picker-new-bundle" hidden accept=".bundle,.db,.zip" />
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <header class="card-header">
+                            <h3 data-i18n="bamt.modUpdate.output.title"></h3>
+                            <span class="card-hint" data-i18n="bamt.modUpdate.output.hint"></span>
+                        </header>
+                        <input type="text" id="mod-output-name" class="text-input" placeholder="輸出檔案名稱（預設沿用目標檔名）" data-i18n-placeholder="bamt.modUpdate.output.placeholder" />
+                    </div>
+
+                    <div class="action-row">
+                        <button class="secondary-btn" id="open-output-folder" type="button" data-i18n="bamt.actions.openOutput"></button>
+                        <div class="action-group">
+                            <button class="ghost-btn" id="preview-files" type="button" data-i18n="bamt.actions.preview"></button>
+                            <button class="primary-btn" id="run-mod-update" type="button" data-i18n="bamt.actions.runModUpdate" disabled></button>
+                            <button class="danger-btn" id="replace-original" type="button" data-i18n="bamt.actions.replaceOriginal" disabled></button>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="tab-panel" data-tab-panel="batch-update" role="tabpanel" hidden>
+                    <div class="card">
+                        <header class="card-header">
+                            <h3 data-i18n="bamt.batchUpdate.source.title">從主程式載入 Mods</h3>
+                            <span class="card-hint" data-i18n="bamt.batchUpdate.source.hint">選擇要更新的 Mod 檔案</span>
+                        </header>
+                        <div class="batch-controls">
+                            <button class="primary-btn" id="load-mods-btn" type="button" data-i18n="bamt.batchUpdate.loadMods">載入 Mod 清單</button>
+                            <div class="batch-actions">
+                                <button class="secondary-btn" id="select-all-batch" type="button" data-i18n="bamt.batchUpdate.selectAll">全選</button>
+                                <button class="secondary-btn" id="select-none-batch" type="button" data-i18n="bamt.batchUpdate.selectNone">全不選</button>
+                            </div>
+                        </div>
+                        <div class="mod-list-container">
+                            <div id="mod-list-empty" class="empty-state" data-i18n="bamt.batchUpdate.emptyState">尚未載入任何 Mod，請點擊「載入 Mod 清單」</div>
+                            <div id="mod-list" class="mod-list" hidden>
+                                <!-- Mod 清單將動態生成 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <header class="card-header">
+                            <h3 data-i18n="bamt.batchUpdate.settings.title">批次處理設定</h3>
+                            <span class="card-hint" data-i18n="bamt.batchUpdate.settings.hint">設定自動搜尋和輸出選項</span>
+                        </header>
+                        <div class="batch-settings">
+                            <label class="checkbox-row">
+                                <input type="checkbox" id="auto-search-enabled" checked>
+                                <span data-i18n="bamt.batchUpdate.autoSearch">啟用自動搜尋對應檔案</span>
+                            </label>
+                            <label class="checkbox-row">
+                                <input type="checkbox" id="auto-output-name" checked>
+                                <span data-i18n="bamt.batchUpdate.autoOutputName">自動產生輸出檔名</span>
+                            </label>
+                            <label class="checkbox-row">
+                                <input type="checkbox" id="continue-on-error">
+                                <span data-i18n="bamt.batchUpdate.continueOnError">發生錯誤時繼續處理其他檔案</span>
+                            </label>
+                            <label class="checkbox-row">
+                                <input type="checkbox" id="delete-old-mods" checked>
+                                <span data-i18n="bamt.batchUpdate.deleteOldMods">處理成功後自動刪除舊版 Mod 檔案</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <header class="card-header">
+                            <h3 data-i18n="bamt.batchUpdate.progress.title">處理進度</h3>
+                        </header>
+                        <div class="progress-container">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="batch-progress-fill" style="width: 0%"></div>
+                            </div>
+                            <div class="progress-text">
+                                <span id="batch-progress-text">準備就緒</span>
+                                <span id="batch-progress-count">0/0</span>
+                            </div>
+                        </div>
+                        <div class="batch-results" id="batch-results" hidden>
+                            <div class="result-summary">
+                                <span class="success-count" id="success-count">成功: 0</span>
+                                <span class="error-count" id="error-count">失敗: 0</span>
+                                <span class="skip-count" id="skip-count">略過: 0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="action-row">
+                        <button class="secondary-btn" id="open-batch-output-folder" type="button" data-i18n="bamt.actions.openOutput">開啟輸出資料夾</button>
+                        <div class="action-group">
+                            <button class="ghost-btn" id="reset-batch" type="button" data-i18n="bamt.batchUpdate.reset">重設</button>
+                            <button class="primary-btn" id="run-batch-update" type="button" data-i18n="bamt.batchUpdate.runBatch" disabled>開始批次更新</button>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="tab-panel" data-tab-panel="png-replace" role="tabpanel" hidden>
+                    <div class="card">
+                        <header class="card-header">
+                            <h3 data-i18n="bamt.pngReplace.bundle.title"></h3>
+                            <span class="card-hint" data-i18n="bamt.pngReplace.bundle.hint"></span>
+                        </header>
+                        <div class="drop-zone" data-target="png-bundle">
+                            <p class="drop-title" data-i18n="bamt.pngReplace.bundle.dropTitle"></p>
+                            <p class="drop-caption" id="png-bundle-caption" data-i18n="bamt.drop.noSelectionFile"></p>
+                            <button class="browse-btn" data-picker="png-bundle" data-i18n="bamt.actions.chooseFile"></button>
+                            <input type="file" id="picker-png-bundle" hidden accept=".bundle,.db" />
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <header class="card-header">
+                            <h3 data-i18n="bamt.pngReplace.folder.title"></h3>
+                            <span class="card-hint" data-i18n="bamt.pngReplace.folder.hint"></span>
+                        </header>
+                        <div class="drop-zone" data-target="png-folder">
+                            <p class="drop-title" data-i18n="bamt.pngReplace.folder.dropTitle"></p>
+                            <p class="drop-caption" id="png-folder-caption" data-i18n="bamt.drop.noSelectionFolder"></p>
+                            <button class="browse-btn" data-picker="png-folder" data-i18n="bamt.actions.chooseFolder"></button>
+                            <input type="file" id="picker-png-folder" hidden webkitdirectory directory multiple />
+                        </div>
+                    </div>
+
+                    <div class="action-row">
+                        <button class="secondary-btn" id="open-output-folder-png" type="button" data-i18n="bamt.actions.openOutput"></button>
+                        <div class="action-group">
+                            <button class="primary-btn" id="run-png-replace" type="button" data-i18n="bamt.actions.runPngReplace" disabled></button>
+                            <button class="danger-btn" id="replace-original-png" type="button" data-i18n="bamt.actions.replaceOriginal" disabled></button>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="log-panel">
+                    <header class="log-header">
+                        <h3 data-i18n="bamt.log.title"></h3>
+                        <span id="log-counter"></span>
+                    </header>
+                    <textarea id="log-output" readonly></textarea>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <input type="file" id="picker-game-resource" hidden webkitdirectory directory multiple />
+    <input type="file" id="picker-output-dir" hidden webkitdirectory directory multiple />
+
+    <script src="../node_modules/i18next/dist/umd/i18next.min.js"></script>
+    <script src="bamt.js"></script>
+</body>
+</html>

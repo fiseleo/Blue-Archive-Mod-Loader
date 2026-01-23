@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <link rel="stylesheet" href="index.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+    <div class="theme-toggle">
+        <button id="theme-toggle-btn" data-i18n-title="toggle_theme" title="切換主題">
+            <span class="theme-icon">🌙</span>
+        </button>
+    </div>
+    
+    <div class="container">
+        <header class="app-header">
+            <h1 class="app-title" data-i18n="title">Blue Archive Mod Loader</h1>
+            <div class="app-version">1.0.4</div>
+        </header>
+
+        <div class="content-grid">
+            <div class="card game-info-card">
+                <div class="card-header">
+                    <h2 data-i18n="game_info_title">遊戲資訊</h2>
+                </div>
+                <div class="card-content">
+                    <div class="info-item">
+                        <label data-i18n="game_path_label">遊戲執行檔路徑</label>
+                        <div class="path-display" id="game-path"></div>
+                    </div>
+                    <div class="info-item">
+                        <label data-i18n="game_bundle_path_label">遊戲資源包路徑</label>
+                        <div class="path-display" id="game-bundle-path"></div>
+                    </div>
+                    <div class="status-section">
+                        <p id="status-message"></p>
+                        <button id="set-game-path-btn" class="btn btn-secondary" data-i18n="set_game_path_button"></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mod-management-card">
+                <div class="card-header">
+                    <h2 data-i18n="mod_management_title"></h2>
+                    <div class="header-actions">
+                        <button id="BAMT" class="btn btn-success" data-i18n="bamt_button"></button>
+                        <button id="select-file-btn" class="btn btn-primary" data-i18n="select_file_button"></button>
+                        <button id="select-all-btn" class="btn btn-success" data-i18n="select_all_button"></button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="table-container">
+                        <table id="mod-table" class="mod-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-checkbox" data-i18n="mod_table_header_enabled"></th>
+                                    <th class="col-filename" data-i18n="mod_table_header_filename" data-sortable="fileName"></th>
+                                    <th class="col-character" data-i18n="mod_table_header_character" data-sortable="character"></th>
+                                    <th class="col-modname" data-i18n="mod_table_header_modname" data-sortable="modName"></th>
+                                    <th class="col-date" data-i18n="mod_table_header_date" data-sortable="installedDate"></th>
+                                    <th class="col-actions" data-i18n="mod_table_header_actions"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="mod-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="action-panel">
+            <div class="action-buttons">
+                <button id="apply-mods-btn" class="btn btn-primary btn-large" data-i18n="apply_mods_button">
+                    <span class="btn-icon">⚡</span>
+                    <span class="btn-text"></span>
+                </button>
+                <button id="uninstall-mods-btn" class="btn btn-danger btn-large" data-i18n="uninstall_mods_button">
+                    <span class="btn-icon">🗑️</span>
+                    <span class="btn-text"></span>
+                </button>
+                <button id="launch-game-btn" class="btn btn-success btn-large" data-i18n="launch_game_button">
+                    <span class="btn-icon">🚀</span>
+                    <span class="btn-text"></span>
+                </button>
+            </div>
+            <div class="status-display">
+                <p id="action-status"></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="./node_modules/i18next/dist/umd/i18next.min.js"></script>
+    <script src="./renderer.js"></script>
+</body>
+</html>
