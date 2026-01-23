@@ -1,0 +1,3 @@
+[submodule "BAMT"]
+	path = BAMT
+	url = https://github.com/Agent-0808/BA-Modding-Toolkit.git
