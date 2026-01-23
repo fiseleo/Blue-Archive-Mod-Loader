@@ -245,6 +245,9 @@ console.log('[setupEventListeners] Setting up all listeners...');
 const buttons = {
     'theme-toggle-btn': toggleTheme,
     'set-game-path-btn': selectGamePath,
+    'find-game-path-auto-btn': () => findGamePathAuto(false),
+    'create-json-btn': createJsonTables,
+    'create-mapping-btn': createMappingJson,
     'bamt-btn': launchBamt,
     'select-file-btn': selectModFiles,
     'select-all-btn': selectAllMods,
@@ -275,8 +278,71 @@ const buttons = {
             sortMods(column);
         });
     });
+
+    const serverSelect = document.getElementById('server-select');
+    if (serverSelect) {
+        serverSelect.addEventListener('change', () => {
+            console.log('[Event] Server region changed:', serverSelect.value);
+            updateServerSpecificUI(serverSelect.value);
+            findGamePathAuto(false);
+            loadMods(); // Reload mods for new region
+        });
+        // Initial state
+        updateServerSpecificUI(serverSelect.value);
+    }
     
     console.log('[setupEventListeners] Complete');
+}
+
+function updateServerSpecificUI(region) {
+    const jsonBtn = document.getElementById('create-json-btn');
+    const mapBtn = document.getElementById('create-mapping-btn');
+    const isJp = (region === 'jp');
+    
+    if (jsonBtn) jsonBtn.style.display = isJp ? 'inline-block' : 'none';
+    if (mapBtn) mapBtn.style.display = isJp ? 'inline-block' : 'none';
+}
+
+async function createJsonTables() {
+    console.log('[createJsonTables] Called');
+    try {
+        document.getElementById('status-message').innerText = t('status.creatingJson');
+        const region = getServerRegion();
+        const result = await CSharpBridge.invoke('createDetailJson', { region });
+        
+        console.log('[createJsonTables] Result:', result);
+        
+        if (result && result.success) {
+            document.getElementById('status-message').innerText = t('status.jsonCreated');
+        } else {
+            const error = result?.error || 'Unknown error';
+            document.getElementById('status-message').innerText = `${t('status.jsonCreateFail')}: ${error}`;
+        }
+    } catch (e) {
+        console.error('[createJsonTables] Error:', e);
+        document.getElementById('status-message').innerText = t('status.jsonCreateFail');
+    }
+}
+
+async function createMappingJson() {
+    console.log('[createMappingJson] Called');
+    try {
+        document.getElementById('status-message').innerText = t('status.creatingMapping');
+        const region = getServerRegion();
+        const result = await CSharpBridge.invoke('createMappingJson', { region });
+        
+        console.log('[createMappingJson] Result:', result);
+        
+        if (result && result.success) {
+            document.getElementById('status-message').innerText = t('status.mappingCreated');
+        } else {
+            const error = result?.error || 'Unknown error';
+            document.getElementById('status-message').innerText = `${t('status.mappingCreateFail')}: ${error}`;
+        }
+    } catch (e) {
+        console.error('[createMappingJson] Error:', e);
+        document.getElementById('status-message').innerText = t('status.mappingCreateFail');
+    }
 }
 
 async function loadGamePaths() {
@@ -317,7 +383,9 @@ async function findGamePathAuto(fromAuto = false) {
         const btn = document.getElementById('find-game-path-auto-btn');
         if (btn && !fromAuto) btn.disabled = true;
 
-        const result = await CSharpBridge.invoke('findGamePathAuto');
+        const serverRegion = document.getElementById('server-select')?.value || 'global';
+        console.log('[findGamePathAuto] Region:', serverRegion);
+        const result = await CSharpBridge.invoke('findGamePathAuto', serverRegion);
         console.log('[findGamePathAuto] Result:', result);
         
         if (result && result.gamePath) {
@@ -347,10 +415,14 @@ async function autoFindGamePathIfMissing() {
     }
 }
 
+function getServerRegion() {
+    return document.getElementById('server-select')?.value || 'global';
+}
+
 async function selectModFiles() {
     try {
         console.log('[selectModFiles] Starting...');
-        const result = await CSharpBridge.invoke('selectModFiles');
+        const result = await CSharpBridge.invoke('selectModFiles', { region: getServerRegion() });
         console.log('[selectModFiles] Result:', result);
         if (result) {
             await loadMods();
@@ -366,7 +438,9 @@ async function selectModFiles() {
 async function loadMods() {
     try {
         console.log('[loadMods] Starting...');
-        const modsRaw = await CSharpBridge.invoke('getMods') || [];
+        const region = getServerRegion();
+        console.log('[loadMods] Loading for region:', region);
+        const modsRaw = await CSharpBridge.invoke('getMods', { region: region }) || [];
         allMods = modsRaw.map(normalizeMod);
         console.log('[loadMods] Loaded', allMods.length, 'mods');
         renderModTable();
@@ -438,14 +512,20 @@ async function updateModEnabled(modId, enabled) {
     if (mod) {
         mod.enabled = enabled;
         console.log('[updateModEnabled]', modId, enabled);
-        await CSharpBridge.invoke('updateMod', toCsharpMod(mod));
+        await CSharpBridge.invoke('updateMod', { 
+            mod: toCsharpMod(mod),
+            region: getServerRegion()
+        });
     }
 }
 
 async function deleteMod(modId) {
     if (confirm(t('alert.deleteConfirm'))) {
         console.log('[deleteMod]', modId);
-        await CSharpBridge.invoke('deleteMod', modId);
+        await CSharpBridge.invoke('deleteMod', { 
+            modId: modId,
+            region: getServerRegion()
+        });
         await loadMods();
     }
 }
@@ -477,7 +557,10 @@ async function applyMods() {
     document.getElementById('action-status').innerText = t('status.applyMods');
     
     try {
-        await CSharpBridge.invoke('applyMods', selectedIds);
+        await CSharpBridge.invoke('applyMods', { 
+            modIds: selectedIds,
+            region: getServerRegion()
+        });
         document.getElementById('action-status').innerText = t('status.applyModsSuccess');
     } catch (e) {
         console.error('[applyMods] Error:', e);
@@ -504,8 +587,12 @@ async function uninstallMods() {
     document.getElementById('action-status').innerText = t('status.uninstallMods');
     
     try {
-        await CSharpBridge.invoke('uninstallMods', selectedIds);
+        await CSharpBridge.invoke('uninstallMods', { 
+            modIds: selectedIds,
+            region: getServerRegion()
+        });
         document.getElementById('action-status').innerText = t('status.uninstallModsSuccess');
+        await loadMods(); // Reload to reflect disabled status
     } catch (e) {
         console.error('[uninstallMods] Error:', e);
         document.getElementById('action-status').innerText = t('status.uninstallModsFail');
@@ -516,13 +603,20 @@ async function launchGame() {
     console.log('[launchGame] Called');
     try {
         document.getElementById('action-status').innerText = t('status.launchingGame');
-        await CSharpBridge.invoke('launchGame');
+        const region = getServerRegion();
+        const result = await CSharpBridge.invoke('launchGame', { region });
+
+        if (result && result.error) {
+            throw new Error(result.error);
+        }
+
         setTimeout(() => {
             document.getElementById('action-status').innerText = t('status.gameLaunched');
         }, 1000);
     } catch (e) {
         console.error('[launchGame] Error:', e);
-        document.getElementById('action-status').innerText = t('status.launchGameFail');
+        const message = e?.message ? `${t('status.launchGameFail')}: ${e.message}` : t('status.launchGameFail');
+        document.getElementById('action-status').innerText = message;
     }
 }
 

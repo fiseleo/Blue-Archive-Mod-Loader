@@ -139,23 +139,41 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
             }
         }
 
-        public async Task<string> FindGameExecutableAsync(Action<string>? statusCallback = null)
+        public async Task<string> FindGameExecutableAsync(string region, Action<string>? statusCallback = null)
         {
             try
             {
-                var steamGamePath = await FindGameViaSteamAsync(statusCallback);
-                if (!string.IsNullOrEmpty(steamGamePath))
+                if (region != null && region.Equals("jp", StringComparison.OrdinalIgnoreCase))
                 {
-                    SaveGamePaths(steamGamePath);
-                    return steamGamePath;
+                    statusCallback?.Invoke("Starting JP Game Detection...");
+                    var jpPath = await FindGameViaJpLauncherAsync(statusCallback);
+                    if (!string.IsNullOrEmpty(jpPath))
+                    {
+                        SaveGamePaths(jpPath);
+                        return jpPath;
+                    }
+                     // If JP specific detection fails, should we fall back to generic drive search?
+                     // Yes, but we might find Global version. 
+                     // Let's assume the user knows what they are doing if they selected JP.
+                     statusCallback?.Invoke("JP Launcher method failed. Searching drives...");
                 }
-
-                statusCallback?.Invoke("Steam search failed. Searching drives...");
+                else
+                {
+                    // Global (Steam) detection
+                    var steamGamePath = await FindGameViaSteamAsync(statusCallback);
+                    if (!string.IsNullOrEmpty(steamGamePath))
+                    {
+                        SaveGamePaths(steamGamePath);
+                        return steamGamePath;
+                    }
+                    statusCallback?.Invoke("Steam search failed. Searching drives...");
+                }
+                
                 await Task.Delay(2000);
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Steam search error: {ex.Message}");
+                Console.Error.WriteLine($"Search error: {ex.Message}");
             }
 
             statusCallback?.Invoke("Preparing drive search...");
@@ -186,6 +204,90 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
 
             statusCallback?.Invoke("Blue Archive not found.");
             return null!;
+        }
+
+        public async Task<string> FindGameViaJpLauncherAsync(Action<string>? statusCallback = null)
+        {
+            try
+            {
+                var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                // User provided: AppData\Roaming\BlueArchive_JP_Gamelauncher\Local Storage\leveldb\000003.log
+                var logPath = Path.Combine(appData, "BlueArchive_JP_Gamelauncher", "Local Storage", "leveldb", "000003.log");
+                
+                statusCallback?.Invoke($"Checking JP Launcher log: {logPath}");
+
+                if (File.Exists(logPath))
+                {
+                    // Try to read the file and look for paths
+                    // The file is likely binary (LevelDB), but might contain plain text paths.
+                    // We'll read it as string and regex search for absolute paths ending in BlueArchive.exe
+                    // Or generically, paths containing "BlueArchive"
+                    
+                    // Note: LevelDB log files might be locked if launcher is running.
+                    string content = "";
+                    try 
+                    {
+                        using (var fs = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                        using (var sr = new StreamReader(fs))
+                        {
+                            content = await sr.ReadToEndAsync();
+                        }
+                    }
+                    catch (Exception readEx)
+                    {
+                         statusCallback?.Invoke($"Failed to read log: {readEx.Message}");
+                         // Fallback: Check if the folder exists, maybe standard install location?
+                         // Standard Yostar install: C:\Program Files\BlueArchiveJP ?
+                         return null;
+                    }
+
+                    // Regex for path
+                    // Pattern: Drive letter, colon, backslash, characters, BlueArchive.exe
+                    // Note: Paths in logs might be escaped or use forward slashes.
+                    // Updated to handle directory paths seen in logs like "C:\\YostarGames\\BlueArchive_JP"
+                    var patterns = new[] 
+                    {
+                        // Match specific exe path if present
+                        @"([a-zA-Z]:[\\/](?:[^<>:""/\\|?*]+[\\/])+BlueArchive\.exe)",
+                        // Match quoted directory paths with double backslashes (common in JSON/C strings)
+                        @"([a-zA-Z]:\\\\(?:[^""\x00-\x1F]+))"
+                    };
+
+                    foreach (var pat in patterns)
+                    {
+                        var matches = System.Text.RegularExpressions.Regex.Matches(content, pat, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        foreach (System.Text.RegularExpressions.Match match in matches)
+                        {
+                             var rawPath = match.Groups[1].Value;
+                             var path = rawPath.Replace("\\\\", "\\").Replace("/", "\\"); // Normalize
+                             
+                             // If path matches a directory, append exe name
+                             if (!path.EndsWith("BlueArchive.exe", StringComparison.OrdinalIgnoreCase))
+                             {
+                                 path = Path.Combine(path, "BlueArchive.exe");
+                             }
+
+                             if (File.Exists(path))
+                             {
+                                 statusCallback?.Invoke($"Found JP Game at: {path}");
+                                 return path;
+                             }
+                        }
+                    }
+                    
+                    statusCallback?.Invoke("No valid game path found in log file.");
+                }
+                else 
+                {
+                    statusCallback?.Invoke("JP Launcher log file not found.");
+                }
+            }
+            catch (Exception ex)
+            {
+                 Console.Error.WriteLine($"JP Launcher search error: {ex.Message}");
+            }
+            
+            return null;
         }
 
         private string SearchDriveForGame(string drivePath, int maxDepth, Action<string>? statusCallback = null)

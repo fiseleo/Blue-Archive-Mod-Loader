@@ -21,7 +21,7 @@
     <div class="container">
         <header class="app-header">
             <h1 class="app-title" data-i18n="app.title">Blue Archive Mod Loader</h1>
-            <div class="app-version">1.0.4</div>
+            <div class="app-version">1.0.5</div>
         </header>
 
         <div class="content-grid">
@@ -30,6 +30,13 @@
                     <h2 data-i18n="gameInfo.title">Game Info</h2>
                 </div>
                 <div class="card-content">
+                    <div class="info-item">
+                        <label data-i18n="gameInfo.server">Server Region</label>
+                        <select id="server-select" class="form-select" style="width: 100%; padding: 8px; margin-bottom: 5px; border-radius: 4px; border: 1px solid #ddd;">
+                            <option value="global" data-i18n="server.global">Global</option>
+                            <option value="jp" data-i18n="server.jp">Japan</option>
+                        </select>
+                    </div>
                     <div class="info-item">
                         <label data-i18n="gameInfo.execPath">Game Executable Path</label>
                         <div class="path-display" id="game-path"></div>
@@ -45,7 +52,12 @@
                                 <div id="progress-bar" style="width: 0%; height: 20px; background-color: #4CAF50; border-radius: 4px; text-align: center; color: white; line-height: 20px;">0%</div>
                             </div>
                         </div>
-                        <button id="set-game-path-btn" class="btn btn-secondary" data-i18n="gameInfo.setPath">Set Game Path</button>
+                        <div class="button-group" style="margin-top: 10px;">
+                            <button id="find-game-path-auto-btn" class="btn btn-info" data-i18n="gameInfo.autoDetect">Auto Detect</button>
+                            <button id="set-game-path-btn" class="btn btn-secondary" data-i18n="gameInfo.setPath">Set Game Path</button>
+                            <button id="create-json-btn" class="btn btn-warning" data-i18n="gameInfo.createJson" style="display: none;">Create JSON</button>
+                            <button id="create-mapping-btn" class="btn btn-warning" data-i18n="gameInfo.createMapping" style="display: none; background-color: #ff9800;">Map JSON</button>
+                        </div>
                     </div>
                 </div>
             </div>

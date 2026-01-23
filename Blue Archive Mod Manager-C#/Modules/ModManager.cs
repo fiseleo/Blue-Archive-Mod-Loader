@@ -12,7 +12,7 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
     {
         private readonly SettingsManager _settingsManager;
         private readonly StudentIndexManager _studentIndexManager;
-        private readonly string _modBundleDir;
+        private readonly string _baseModBundleDir;
         private readonly string[] _supportedExtensions = { ".ogg", ".mp4", ".jpg", ".jpeg", ".png", ".bundle", ".zip", ".db" };
 
         private readonly Action<string> _logger;
@@ -21,34 +21,27 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
         {
             _settingsManager = settingsManager;
             _studentIndexManager = studentIndexManager;
-            _modBundleDir = Path.Combine(settingsManager.GetAppDataPath(), "ModBundle");
+            _baseModBundleDir = Path.Combine(settingsManager.GetAppDataPath(), "ModBundle");
             _logger = msg => Console.WriteLine(msg);
             
-            if (!Directory.Exists(_modBundleDir))
+            if (!Directory.Exists(_baseModBundleDir))
             {
-                Directory.CreateDirectory(_modBundleDir);
+                Directory.CreateDirectory(_baseModBundleDir);
             }
         }
 
-        public string GetModBundleDir() => _modBundleDir;
-
-        public List<ModData> SelectModFiles(string[] filePaths)
+        public string GetModBundleDir(string region = "global")
         {
-            var currentMods = GetAllMods();
-            var errors = new List<string>();
+             var dir = Path.Combine(_baseModBundleDir, region.ToLower());
+             if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+             return dir;
+        }
 
-            if (!Directory.Exists(_modBundleDir))
-            {
-                try
-                {
-                    Directory.CreateDirectory(_modBundleDir);
-                }
-                catch (Exception ex)
-                {
-                    Console.Error.WriteLine($"Failed to create ModBundle directory: {ex.Message}");
-                    return currentMods;
-                }
-            }
+        public List<ModData> SelectModFiles(string[] filePaths, string region = "global")
+        {
+            var currentMods = GetAllMods(null, region);
+            var modBundleDir = GetModBundleDir(region);
+            var errors = new List<string>();
 
             foreach (var filePath in filePaths)
             {
@@ -56,7 +49,7 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
 
                 var fileName = Path.GetFileName(filePath);
                 var modName = Path.GetFileNameWithoutExtension(fileName);
-                var finalPath = Path.Combine(_modBundleDir, fileName);
+                var finalPath = Path.Combine(modBundleDir, fileName);
 
                 // Check if mod with same filename already exists
                 var existingMod = currentMods.FirstOrDefault(m => m.FileName == fileName);
@@ -67,7 +60,7 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
                     var baseName = Path.GetFileNameWithoutExtension(fileName);
                     var timestamp = DateTime.UtcNow.ToString("O").Replace(":", "-").Substring(0, 19);
                     var newFileName = $"{baseName}_v{timestamp}{fileExt}";
-                    finalPath = Path.Combine(_modBundleDir, newFileName);
+                    finalPath = Path.Combine(modBundleDir, newFileName);
                     modName = $"{modName} (v{timestamp})";
                 }
 
@@ -102,15 +95,17 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
                 }
             }
 
-            SaveMods(currentMods);
+            SaveMods(currentMods, region);
             return currentMods;
         }
 
-        public List<ModData> GetAllMods(string? forcedLocale = null)
+        public List<ModData> GetAllMods(string? forcedLocale = null, string region = "global")
         {
-            var mods = _settingsManager.Get<List<ModData>>("mods", new List<ModData>());
+            var settingKey = $"mods_{region.ToLower()}";
+            var mods = _settingsManager.Get<List<ModData>>(settingKey, new List<ModData>());
             var currentLocale = forcedLocale ?? _settingsManager.Get<string>("language", "en");
             var supportedExts = new HashSet<string>(_supportedExtensions.Select(e => e.ToLower()));
+            var modBundleDir = GetModBundleDir(region);
 
             // Verify mod files still exist
             var validMods = new List<ModData>();
@@ -143,7 +138,7 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
             // Discover mods that exist on disk but not in storage
             try
             {
-                var files = Directory.GetFiles(_modBundleDir);
+                var files = Directory.GetFiles(modBundleDir);
                 var knownPaths = new HashSet<string>(validMods.Select(m => Path.GetFullPath(m.Path)));
 
                 foreach (var filePath in files)
@@ -182,27 +177,27 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
                 Console.Error.WriteLine($"Error discovering mods: {ex.Message}");
             }
 
-            SaveMods(validMods);
+            SaveMods(validMods, region);
             return validMods;
         }
 
-        public ModData UpdateMod(ModData mod)
+        public ModData UpdateMod(ModData mod, string region = "global")
         {
-            var mods = GetAllMods();
+            var mods = GetAllMods(null, region);
             var index = mods.FindIndex(m => m.Id == mod.Id);
             
             if (index >= 0)
             {
                 mods[index] = mod;
-                SaveMods(mods);
+                SaveMods(mods, region);
             }
 
             return mod;
         }
 
-        public bool DeleteMod(string modId)
+        public bool DeleteMod(string modId, string region = "global")
         {
-            var mods = GetAllMods();
+            var mods = GetAllMods(null, region);
             var mod = mods.FirstOrDefault(m => m.Id == modId);
             
             if (mod != null)
@@ -220,24 +215,36 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
                 }
 
                 mods.Remove(mod);
-                SaveMods(mods);
+                SaveMods(mods, region);
                 return true;
             }
 
             return false;
         }
 
-        private void SaveMods(List<ModData> mods)
+        private void SaveMods(List<ModData> mods, string region)
         {
-            _settingsManager.Set("mods", mods);
+            var settingKey = $"mods_{region.ToLower()}";
+            _settingsManager.Set(settingKey, mods);
         }
 
-        public async Task ApplyModsAsync(List<string> selectedModIds, GamePathManager gamePathManager)
+        public async Task ApplyModsAsync(List<string> selectedModIds, GamePathManager gamePathManager, string region = "global")
         {
+            var jpMapping = ShouldUseJpMapping(region) ? LoadJpOriginalToHashMap() : null;
+
             await Task.Run(async () =>
             {
-                var mods = GetAllMods();
-                var (gamePath, bundlePath) = gamePathManager.GetGamePaths();
+                // We need to load from the specific region list, OR assume the Ids are unique enough?
+                // Safest to load the list for the region.
+                var mods = GetAllMods(null, region); 
+                var (gamePath, bundlePath) = gamePathManager.GetGamePaths(); // GamePathManager needs to know region? NO, GamePathManager returns current configured path.
+                // Wait, if I switch region in UI, does GamePathManager switch paths?
+                // The current implementation of GamePathManager.GetGamePaths() just returns stored "gamePath" from settings.
+                // It does NOT separate Global vs JP paths in settings storage yet, it overrwrites "gamePath" key.
+                // This means when user switches server in UI, they *must* redetect path.
+                // Which is handled by `findGamePathAuto(false)` in renderer.js listener.
+                // So at this point, `gamePathManager` should assume the correct path is set.
+                
                 if (string.IsNullOrEmpty(bundlePath) || !Directory.Exists(bundlePath))
                 {
                     _logger("Bundle path not configured or missing.");
@@ -255,6 +262,7 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
                     }
 
                     var targetFileName = !string.IsNullOrEmpty(mod.FileName) ? mod.FileName : Path.GetFileName(mod.Path);
+                    targetFileName = ResolveTargetFileName(targetFileName, region, jpMapping);
                     var targetPath = gamePathManager.FindTargetFile(targetFileName);
                     if (string.IsNullOrEmpty(targetPath))
                     {
@@ -288,25 +296,33 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
                     }
                 }
 
-                SaveMods(mods);
+                SaveMods(mods, region);
             });
         }
 
-        public async Task UninstallModsAsync(List<string> selectedModIds, GamePathManager gamePathManager)
+        public async Task<List<string>> UninstallModsAsync(List<string> selectedModIds, GamePathManager gamePathManager, string region = "global")
         {
-            await Task.Run(() =>
+            var jpMapping = ShouldUseJpMapping(region) ? LoadJpOriginalToHashMap() : null;
+            return await Task.Run(() =>
             {
+                var errors = new List<string>();
                 var (gamePath, bundlePath) = gamePathManager.GetGamePaths();
-                var mods = GetAllMods();
+                var mods = GetAllMods(null, region);
                 var selected = mods.Where(m => selectedModIds.Contains(m.Id)).ToList();
 
                 foreach (var mod in selected)
                 {
                     var targetFileName = !string.IsNullOrEmpty(mod.FileName) ? mod.FileName : Path.GetFileName(mod.Path);
+                    targetFileName = ResolveTargetFileName(targetFileName, region, jpMapping);
                     var targetPath = gamePathManager.FindTargetFile(targetFileName);
                     if (string.IsNullOrEmpty(targetPath))
                     {
-                        _logger($"Target file not found for uninstall: {targetFileName}");
+                        var msg = $"Target file not found for uninstall: {targetFileName}";
+                        _logger(msg);
+                        errors.Add(msg);
+                        // If target not found, we can't restore. But should we disable?
+                        // If file is gone, mod is effectively gone from game.
+                        mod.Enabled = false; 
                         continue;
                     }
 
@@ -322,12 +338,89 @@ namespace Blue_Archive_Mod_Manager_C_.Modules
                     }
                     catch (Exception ex)
                     {
-                        _logger($"Error restoring {targetFileName}: {ex.Message}");
+                        var msg = $"Error restoring {targetFileName}: {ex.Message}";
+                        _logger(msg);
+                        errors.Add(msg);
                     }
                 }
 
-                SaveMods(mods);
+                SaveMods(mods, region);
+                return errors;
             });
+        }
+
+        private static bool ShouldUseJpMapping(string region)
+        {
+            return region.Equals("jp", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private string ResolveTargetFileName(string originalName, string region, IReadOnlyDictionary<string, string>? jpMapping)
+        {
+            if (string.IsNullOrWhiteSpace(originalName)) return originalName;
+            if (!ShouldUseJpMapping(region)) return originalName;
+
+            var extension = Path.GetExtension(originalName);
+            if (extension.Equals(".bundle", StringComparison.OrdinalIgnoreCase))
+            {
+                return originalName;
+            }
+
+            if (jpMapping == null || jpMapping.Count == 0)
+            {
+                _logger("JP mapping table is empty or missing. Falling back to original filename.");
+                return originalName;
+            }
+
+            var key = Path.GetFileName(originalName);
+            if (string.IsNullOrEmpty(key)) return originalName;
+
+            if (jpMapping.TryGetValue(key, out var hashedName) && !string.IsNullOrWhiteSpace(hashedName))
+            {
+                return hashedName;
+            }
+
+            _logger($"JP mapping entry not found for {key}, using original filename.");
+            return originalName;
+        }
+
+        private IReadOnlyDictionary<string, string> LoadJpOriginalToHashMap()
+        {
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                var mappingPath = Path.Combine(_settingsManager.GetAppDataPath(), "Exports", "Mapping.json");
+                if (!File.Exists(mappingPath))
+                {
+                    _logger("Mapping.json not found. Please create it from the JP tools before applying mods.");
+                    return result;
+                }
+
+                var json = File.ReadAllText(mappingPath);
+                var hashedToOriginal = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+                if (hashedToOriginal == null)
+                {
+                    _logger("Mapping.json is empty or invalid.");
+                    return result;
+                }
+
+                foreach (var kvp in hashedToOriginal)
+                {
+                    if (string.IsNullOrWhiteSpace(kvp.Value) || string.IsNullOrWhiteSpace(kvp.Key)) continue;
+                    var originalName = Path.GetFileName(kvp.Value);
+                    if (string.IsNullOrEmpty(originalName)) continue;
+
+                    if (!result.ContainsKey(originalName))
+                    {
+                        result[originalName] = kvp.Key;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger($"Failed to load JP mapping: {ex.Message}");
+            }
+
+            return result;
         }
     }
 }
